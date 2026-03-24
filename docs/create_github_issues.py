@@ -30,7 +30,7 @@ API_BASE = "https://api.github.com"
 # ---------------------------------------------------------------------------
 ISSUES = [
     {
-        "title": "Tests fail to import: functions missing from timetable_automation package __init__",
+        "title": "Tests fail to import: timetable_automation has misnamed _init_.py (should be __init__.py) and is empty",
         "body": (
             "**Describe the bug**\n"
             "`tests/test_timetable.py` (line 5) and `tests/test_faculty.py` (line 6) import "
@@ -40,9 +40,13 @@ ISSUES = [
             "safe_str, get_free_blocks, allocate_session, merge_and_style_cells, "
             "generate_timetable, split_by_half\n"
             "```\n\n"
-            "However `timetable_automation/_init_.py` is completely empty, so none of these "
-            "symbols are exported. Running `pytest tests/` fails immediately with an "
-            "`ImportError` before any test logic executes.\n\n"
+            "There are two compounding problems:\n\n"
+            "1. The package initialiser is named `_init_.py` (single underscores) instead of "
+            "`__init__.py` (double underscores), so Python never treats it as a package initialiser.\n"
+            "2. Even if correctly named, the file is empty – none of the required symbols are "
+            "re-exported.\n\n"
+            "Running `pytest tests/` fails immediately with an `ImportError` before any test "
+            "logic executes.\n\n"
             "**Expected behavior**\n"
             "Running `pytest tests/` should execute all tests without import errors.\n\n"
             "**Steps to Reproduce**\n"
@@ -52,8 +56,8 @@ ISSUES = [
             "4. Observe `ImportError: cannot import name 'parse_time' from 'timetable_automation'`.\n\n"
             "**Additional context**\n"
             "The functions exist in `timetable_automation/timetable.py` and "
-            "`timetable_automation/draft.py` but are never re-exported from `__init__.py`. "
-            "Fix: populate `timetable_automation/__init__.py` with the required imports, "
+            "`timetable_automation/draft.py` but are never re-exported. "
+            "Fix: rename `_init_.py` to `__init__.py` and populate it with the required imports, "
             "or update the test files to import from the specific submodules."
         ),
     },
@@ -286,7 +290,7 @@ ISSUES = [
             "|--------|-------|-------|\n"
             "| `code.py` | 382 | Exam scheduler, interactive date input |\n"
             "| `timetable_generator.py` | 183 | Exam scheduler, hardcoded date |\n"
-            "| `timetable_automation/timetable.py` | 1 175 | Seminar scheduler |\n"
+            "| `timetable_automation/timetable.py` | 1,175 | Seminar scheduler |\n"
             "| `timetable_automation/draft.py` | ~900 | Variant of timetable.py |\n\n"
             "Because the same logic is duplicated, a bug fix in one file is never "
             "propagated to the others. For example, bare `except:` clauses and missing "

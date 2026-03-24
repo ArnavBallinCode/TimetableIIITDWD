@@ -16,7 +16,7 @@ Generate one at <https://github.com/settings/tokens>.
 
 ---
 
-## Bug 1 – Tests fail to import: functions missing from `timetable_automation` package `__init__`
+## Bug 1 – Tests fail to import: `timetable_automation` package has a misnamed `_init_.py` (should be `__init__.py`) and is empty
 
 **Describe the bug**
 
@@ -29,9 +29,16 @@ from timetable_automation import parse_time, slot_duration_from_bounds, parse_lt
     generate_timetable, split_by_half
 ```
 
-However `timetable_automation/_init_.py` is completely empty, so none of these
-symbols are exported. Running `pytest tests/` fails immediately with an
-`ImportError` before any test logic executes.
+There are two compounding problems:
+
+1. The package initialiser is named `_init_.py` (single underscores) instead of
+   `__init__.py` (double underscores), so Python never treats it as a package
+   initialiser.
+2. Even if the file were correctly named, it is empty – none of the required
+   symbols are re-exported.
+
+Running `pytest tests/` fails immediately with an `ImportError` before any test
+logic executes.
 
 **Expected behavior**
 
@@ -357,7 +364,7 @@ overlapping functionality:
 |--------|-------|-------|
 | `code.py` | 382 | Exam scheduler, interactive date input |
 | `timetable_generator.py` | 183 | Exam scheduler, hardcoded date |
-| `timetable_automation/timetable.py` | 1 175 | Seminar scheduler |
+| `timetable_automation/timetable.py` | 1,175 | Seminar scheduler |
 | `timetable_automation/draft.py` | ~900 | Variant of `timetable.py` |
 
 Because the same logic is duplicated, a bug fix in one file is never
