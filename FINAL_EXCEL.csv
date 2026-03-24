@@ -1,0 +1,99 @@
+COURSE CODE,COURSE TITLE,ELECTIVE OR NOT,FULLSEM OR HALFSEM,BATCH_REAL,NO. OF STUDENTS,SLOT NAME
+EC456,Reinforcement learning,YES,fullsem,ALL-4TH YEAR,200,ELECTIVE-1
+DS401,Health Care Data Analytics,YES,fullsem,ALL-4TH YEAR,93,ELECTIVE-1
+EC462,Generative AI,YES,fullsem,ALL-4TH YEAR,100,ELECTIVE-2
+EC465,Hands on CMOS Analog and RF circuit design,YES,fullsem,ALL-4TH YEAR,93,ELECTIVE-2
+PH454,Quantum (AI+Gen AI),YES,fullsem,ALL-4TH YEAR,100,ELECTIVE-2
+CS457,DevOps and its Applications,YES,fullsem,ALL-4TH YEAR,60,ELECTIVE-3
+DS458,Agentic AI,YES,fullsem,ALL-4TH YEAR,64,ELECTIVE-3
+CS468,Information Retrieval,YES,fullsem,ALL-4TH YEAR,40,ELECTIVE-3
+CS473,Cloud SRE and Security,YES,fullsem,ALL-4TH YEAR,55,ELECTIVE-3
+New,Software Defined Networks,YES,fullsem,ALL-4TH YEAR,74,ELECTIVE-3
+CS470,AI for cybersecurity,YES,fullsem,ALL-4TH YEAR,82,ELECTIVE-4
+DS102,Finance and Accounting,YES,fullsem,ALL-4TH YEAR,65,ELECTIVE-4
+MA452,Operation Research,YES,fullsem,ALL-4TH YEAR,46,ELECTIVE-4
+EC463,Energy Efficient Neural Networks,YES,fullsem,ALL-4TH YEAR,100,ELECTIVE-4
+CS309,Statistics for Computer Science,NO,fullsem,3CSEA,141,SCS
+CS303,Computer Networks,NO,fullsem,3CSEA,141,CN
+CS304,Artificial Intelligence,NO,fullsem,3CSEA,141,AI
+HS101,Environmental Studies,NO,fullsem,3CSEA,141,ES
+CS463,Parallel computing,YES,fullsem,ALL-3RD YEAR,62,ELECTIVE-1
+CS308,Compiler Design,YES,fullsem,ALL-3RD YEAR,64,ELECTIVE-1
+DS301,Graphs and Scoial Network,YES,fullsem,ALL-3RD YEAR,70,ELECTIVE-1
+CS366,Advanced Algorithm Design,YES,fullsem,ALL-3RD YEAR,93,ELECTIVE-1
+DS359,Full Stack Development,YES,fullsem,ALL-3RD YEAR,54,ELECTIVE-2
+EC355,Internet of Things,YES,fullsem,ALL-3RD YEAR,52,ELECTIVE-2
+EC364,Semiconductor Device Modeling,YES,fullsem,ALL-3RD YEAR,60,ELECTIVE-2
+CS352,Cryptography & Information Security,YES,fullsem,ALL-3RD YEAR,61,ELECTIVE-2
+EC365,AI in Biomedical Signal Interpretation,YES,fullsem,ALL-3RD YEAR,62,ELECTIVE-2
+CS309,Statistics for Computer Science,NO,fullsem,3CSEB,141,SCS
+CS303,Computer Networks,NO,fullsem,3CSEB,141,CN
+CS304,Artificial Intelligence,NO,fullsem,3CSEB,141,AI
+HS101,Environmental Studies,NO,fullsem,3CSEB,141,ES
+DS302,"Computer Communication
+Networks",NO,Fullsem,3DSAI,82,CCN
+DS303,"Algorithms and Artificial
+Intelligence",NO,Fullsem,3DSAI,82,AAI
+CS307,Machine Learning,NO,Fullsem,3DSAI,82,ML
+,Digital signal processing ,NO,Full sem,3ECE,66,DSP
+,Introduction to VLSL Design ,NO,Full sem,3ECE,66,IVD
+,Introduction to Alogrithms ,NO,Full sem,3ECE,66,IA
+,Happiness & Wellbeing ,NO,Full sem,3ECE,66,HW
+MA261,Differential Equations,NO,,2-CSE,170,DE
+MA262,Multivariate Calculus,NO,,2-CSE,170,MC
+CS261,Operating system,NO,,2CSE-A,84,OS
+CS262,Software design tools and techniques,NO,,2CSE-A,170,SDTT
+CS263,Design and Analysis of Algorithms,NO,,2CSE-A,170,DAA
+CS264,Computer Networks,NO,,2CSE-A,170,CN
+HS261,HSS,NO,,2CSE-A,170,HSS
+CS261,Operating system,NO,,2CSE-B,86,OS
+CS262,Software design tools and techniques,NO,,2CSE-B,170,SDTT
+CS263,Design and Analysis of Algorithms,NO,,2CSE-B,170,DAA
+CS264,Computer Networks,NO,,2CSE-B,170,CN
+HS261,HSS,NO,,2CSE-B,170,HSS
+DS261,Statistical Programming,NO,,2DSAI,88,SP
+DA262,Data Handling And Visualization,NO,,2DSAI,88,DHV
+CS304,Artifical Intelligence,NO,,2DSAI,88,AI
+CS307,Machine Learning,NO,,2DSAI,153,ML
+,Random Process ,NO,,2ECE,65,RP
+,Signals & Systems,NO,,2ECE,65,SS
+,Semiconductor Devices ,NO,,2ECE,65,SD
+,Analog Electronics circuits ,NO,,2ECE,65,AEC
+,Machine Learning ,NO,,2ECE,153,ML
+HSS/IE,"Neuro-Linguistic Programming
+(NLP",Yes,,2ECE+2DSAI,33,ELECTIVE-2
+HSS/IE,Leadership,Yes,,2ECE+2DSAI,40,ELECTIVE-2
+HSS/IE,Sociology for Innovation,Yes,,2ECE+2DSAI,25,ELECTIVE-2
+HSS/IE,Social Impact of Technology,Yes,,2ECE+2DSAI,27,ELECTIVE-2
+HSS/IE,Holistic Personality Development,Yes,,2ECE+2DSAI,28,ELECTIVE-2
+MA262,Multivariate Calcus,NO,,2ECE+2DSAI,153,MC
+MA261,Differential Equations,NO,,2ECE+2DSAI,153,DE
+EC251,Electronics System Design-1,YES,,ALL-2ND YEAR,48,ELECTIVE-1
+EC252,Introduction of RFIC design,YES,,ALL-2ND YEAR,55,ELECTIVE-1
+New,Introduction to Embedded Signal Intelligence,YES,,ALL-2ND YEAR,40,ELECTIVE-1
+New,Electronics System Engineering,YES,,ALL-2ND YEAR,50,ELECTIVE-1
+CS152,Data Science with Python,YES,,ALL-2ND YEAR,80,ELECTIVE-1
+CS251,2D Computer Graphics,YES,,ALL-2ND YEAR,50,ELECTIVE-1
+MA161,Statistics,NO,,1CSE,215,STAT
+DS161,Introduction to DS and AI,NO,,1CSE,215,DS
+MA162,Probability,NO,,1CSE,215,PB
+EC161,Digital Design,NO,,1CSE,215,DD
+CS161,Problem Solving through Programming,NO,,1CSEA,215,PSP
+HS161,English Language and Communication,NO,,1CSEA,215,ENG
+PH151,Introduction to Quantum Physics,YES,,ALL 1ST-YEAR,40,ELECTIVE-1
+DS151,Linux for Engineers,YES,,ALL 1ST-YEAR,45,ELECTIVE-1
+New,Fundamentals of sensing and Control,YES,,ALL 1ST-YEAR,40,ELECTIVE-1
+HS157,Computational Musicology for Hindustani Music,YES,,ALL 1ST-YEAR,48,ELECTIVE-1
+New,Kanada Kali-Nali,YES,,ALL 1ST-YEAR,30,ELECTIVE-1
+New,Leveraging IT for Social Good & CSR,YES,,ALL 1ST-YEAR,54,ELECTIVE-1
+New,Basics of Design,YES,,ALL 1ST-YEAR,50,ELECTIVE-1
+HS156,Holistic Personality Development,YES,,ALL 1ST-YEAR,48,ELECTIVE-1
+CS151,Introduction to Cybersecurity,YES,,ALL 1ST-YEAR,127,ELECTIVE-1
+CS161,Problem Solving through Programming,NO,,1CSEB,215,PSP
+HS161,English Language and Communication,NO,,1CSEB,215,ENG
+MA161,Statistics,NO,,1ECE+1DSAI,219,STAT
+DS161,Introduction to DS and AI,NO,,1ECE+1DSAI,219,DS
+MA162,Probability,NO,,1ECE+1DSAI,219,PB
+EC161,Digital Design,NO,,1ECE+1DSAI,219,DD
+CS161,Problem Solving through Programming,NO,,1DSAI,219,PSP
+CS161,Problem Solving through Programming,NO,,1ECE,219,PSP

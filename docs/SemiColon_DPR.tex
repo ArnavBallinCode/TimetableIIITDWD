@@ -1,0 +1,979 @@
+\documentclass[12pt]{article}
+\usepackage{setspace}
+\usepackage{a4}
+\usepackage{amssymb,amsmath,amsthm,latexsym}
+\usepackage{amsfonts}
+\usepackage{amsfonts}
+\usepackage{array}
+\usepackage[numbers]{natbib}
+\bibliographystyle{plainnat}
+\usepackage{float}
+\usepackage[nottoc]{tocbibind}
+\setlength{\parindent}{1.0cm} \setlength{\evensidemargin}{0.0cm}
+\setlength{\oddsidemargin}{0.0cm} \setlength{\topmargin}{0.0cm}
+
+\textwidth 17cm \textheight 20cm
+\onehalfspacing
+
+
+
+\usepackage{microtype}
+\usepackage{tablefootnote}
+\usepackage{threeparttable}  
+\usepackage{booktabs}
+\usepackage{caption}
+\captionsetup{justification   = raggedright,
+              singlelinecheck = false}
+\usepackage{bm}
+\usepackage{stfloats}
+\usepackage{mathrsfs}
+\usepackage{tabularx}
+%\usepackage{algpseudocode}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{nicematrix}
+\usepackage[thinlines]{easytable}
+\usepackage{enumitem}
+\usepackage{textcomp}
+\usepackage{subcaption}
+
+\usepackage{amsmath}
+\usepackage{adjustbox}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{graphicx}
+\captionsetup[subfigure]{font=footnotesize}
+\makeatletter
+\usepackage{listings}
+\usepackage{color}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\lstset{frame=tb,
+  language=Java,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+}
+
+\usepackage[justification=centering]{caption}
+
+\usepackage{multicol}
+\usepackage{longtable}
+%\usepackage{biblatex}
+
+\usepackage{algorithm,algorithmic}
+\def\newblock{\hskip .11em plus .33em minus .07em}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+		T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+
+
+
+
+\usepackage[justification=centering]{caption}
+
+\usepackage{multicol}
+\usepackage{longtable}
+
+\AtBeginEnvironment{procedure}{\let\c@algocf\c@procedure}
+\makeatother
+
+%\usepackage{natbib}
+\usepackage{tablefootnote}
+\usepackage{threeparttable}  
+\usepackage{multirow}
+\usepackage{textcomp}
+\newtheorem{definition}{Definition}
+\usepackage{subcaption}
+\usepackage{adjustbox}
+\usepackage{graphicx}
+\usepackage{graphics}
+\usepackage{float}
+\usepackage{etoolbox}
+\newcounter{procedure}
+\makeatletter
+\AtBeginEnvironment{procedure}{\let\c@algocf\c@procedure}
+\makeatother
+\usepackage[font=footnotesize]{caption}
+\captionsetup[table]{labelsep=newline}
+%\captionsetup[ruled]{labelsep=period}
+\captionsetup[figure]{labelsep=period}
+%\captionsetup[subfigure]{labelsep=period}
+\captionsetup[subfigure]{font=footnotesize}
+\makeatletter
+\usepackage{algorithm,algorithmic}
+\def\newblock{\hskip .11em plus .33em minus .07em}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+		T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+%\usepackage{algorithmicx}
+\usepackage{amssymb}
+\usepackage{float}
+\usepackage{amsthm,xpatch,amsmath}
+\usepackage{amsmath}
+\makeatletter
+\xpatchcmd{\@thm}{\fontseries\mddefault\upshape}{}{}{} % same font as thm-header
+\makeatother
+%\theoremstyle{definition}
+%\newtheorem{definition}{Definition}
+%\theoremstyle{example}
+%\newtheorem{example}{Example}
+%\theoremstyle{lemma}
+\newtheorem{lemma}{Lemma}
+\usepackage{listings}
+\usepackage{color}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\lstset{frame=tb,
+  language=Java,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,} 
+\newcommand*{\comb}[2]{{}^{#1}C_{#2}}%
+\newcommand{\RNum}[1]{\lowercase\expandafter{\romannumeral #1\relax}}
+\makeatletter
+\@dblfptop 0pt
+\makeatother
+
+
+
+
+
+
+
+\begin{document}
+\begin{titlepage}
+\doublespacing
+
+\begin{center}
+\par {\large \textbf{Detailed Project Report}}\\
+\end{center}
+
+\begin{center}
+	\par {\large \textbf{on}}
+\end{center}
+
+%\par~
+
+\begin{center}
+{\Large \textbf{Automated Timetable scheduling for IIIT Dharwad}}
+\end{center}
+
+{\small
+\begin{center}
+\par \small {Submitted by}
+\par \Large \textbf{Team: }\textbf{Semicolon}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{logoooo.png}
+    
+\end{figure}
+
+\par \large \textbf{Shivam Kishore} \textbf{24BCS140 }
+\par \large \textbf{Ritik Sinha} \textbf{24BCS121 }
+\par \large \textbf{Mayank Sahu} \textbf{24BCS126 }
+\par \large \textbf{P Maruthi} \textbf{24BCS098 }
+
+\par Under the guidance of
+\par \large \textbf{ Dr. Vivekraj VK}
+\par \textbf{Assistant Professor}
+\end{center}
+}
+
+\begin{figure}[h]
+\begin{center}
+\includegraphics[height=.80in]{iiIT-Dharwad-Logo-horizontal-500x154[1].png}
+\end{center}
+\end{figure}
+
+\begin{center}
+\par{\mbox {\small\textbf{DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING}}}
+\noindent{\mbox{\small \textbf{ INDIAN INSTITUTE OF INFORMATION TECHNOLOGY
+DHARWAD}}}\\
+12/08/2024
+
+\end{center}
+\end{titlepage}
+
+
+%\newpage
+%\thispagestyle{empty}
+%%\mbox{}
+%\clearpage             %rest of the page is left blank in the title page
+%\thispagestyle{empty}  % to remove the page number from the empty page
+%\phantom{a}            %the particular page is left blank i.e. the command leaves a space of size a. The command \newpage begins the next text in the newpage. So the page is left blank.The command produces a blank space.
+%%\vfill
+%\newpage
+%\thispagestyle{empty}
+%
+%\begin{center}
+%	
+%	\emph{\huge{Certificate}}\\[2.5cm]
+%\end{center}
+%\normalsize This is to certify that the project, entitled \textbf{XXX}, is a bonafide record of the Mini Project coursework presented by the students whose names are given below during $<$Academic Year here$>$ in partial fulfilment of the requirements of the degree of Bachelor of Technology in Computer Science and Engineering.\\[1.0cm]
+%
+%\begin{table}[h]
+%	\centering
+%	\begin{tabular}{lr}
+%		Roll No & Names of Students \\ \\ \hline
+%		\\
+%		$<$Roll no here$>$ &$<$Name here$>$ \\ 
+%		$<$Roll no here$>$ &$<$Name here$>$ \\ 
+%		$<$Roll no here$>$ &$<$Name here$>$ \\ 
+%	\end{tabular}
+%\end{table}
+%
+%\vfill
+%
+%
+%% Bottom of the page
+%\begin{flushright}
+%	$<$Supervisor name here$>$\\
+%	(Project Supervisor )\\[1.5cm]
+%	%<Coordinator name here>\\
+%	%(Course Coordinator)\\
+%\end{flushright}
+
+\newpage
+\pagenumbering{roman}
+\setcounter{page}{1}
+\tableofcontents
+\newpage
+\listoffigures
+\newpage
+
+\section*{List of Tables}
+\begin{enumerate}
+    \item List of functional requirements \dotfill 9
+    \item List of non-functional requirements \dotfill 11
+\end{enumerate}
+
+
+
+\newpage
+\thispagestyle{empty}
+%\mbox{}
+\clearpage             %rest of the page is left blank in the title page
+\thispagestyle{empty}  % to remove the page number from the empty page
+\phantom{a}            %the particular page is left blank i.e. the command leaves a space of size a. The command \newpage begins the next text in the newpage. So the page is left blank.The command produces a blank space.
+%\vfill
+
+
+
+
+\section{Introduction}
+\large
+Creating an efficient timetable in a modern academic setting is a challenging process that requires balancing multiple constraints while optimizing resource usage. At IIIT Dharwad, with a growing variety of courses, electives, and laboratory work, manual timetable creation is often time-consuming and prone to conflicts. An automated timetable system can solve these challenges by providing an organized, flexible, and adaptive scheduling framework for both students and faculty members.
+
+The proposed system makes use of intelligent algorithms, real-time data, and modern technologies such as vision-based recognition and QR code access to streamline timetable generation and management. By considering academic rules, faculty preferences, and student availability, it delivers a conflict-free and visually accessible timetable.
+\pagenumbering{arabic}
+Provide a detailed introduction to the problem describing the purpose. Describe the constraints with which the system has to function.
+\begin{itemize}
+    \item Tracking availability of professors, classrooms, laboratories, lab assistants, students registered for a course, and individual students.
+
+\item Taking user inputs for:
+
+Course Code: e.g., CS101
+
+Course Name: e.g., Data Structures and Algorithms
+
+\item LTPSC Structure: e.g., 3-1-2-0-4 (3 Lectures, 1 Tutorial, 2 Practical hours, 0 Self-study, 4 Credits) or 2-0-3-0-3 (2 Lectures, 0 Tutorials, 3 Practical hours, 0 Self-study, 3 Credits)
+
+Course Instructor: e.g., Dr. A. Kumar
+
+Course Offered To: e.g., B.Tech CSE, Semester 3
+
+\item Allocating dedicated study hours for better preparation time between lectures.
+
+\item Avoiding continuous classes for professors, ensuring a minimum 3-hour gap between any two lectures.
+
+\item Restricting one lecture/tutorial per day per course for balanced learning.
+
+\item Dynamic rescheduling in case of faculty absence, public holidays, or student unavailability.
+
+\item scheduling lunch breaks within the working hours of the mess to avoid clashes.
+
+\item Color-coded visual timetables for quick recognition (e.g., green for core courses, blue for labs, orange for electives).
+
+\item Scheduling labs on the same day as the related lecture to improve retention and application.
+
+\item  With the automation of class timetables, the need for a parallel system to automate exam timetables has emerged, ensuring consistency and reducing manual workload for the exam section.
+
+\item The system will also manage classroom allocation and seating arrangements, ensuring fairness by preventing two students taking the same exam from occupying the same desk.
+
+\item Automatic syncing with Google Calendar for reminders and easy mobile access.
+
+\item Special handling of half-semester courses so they do not overlap with regular full-semester ones.
+
+\item Ensuring elective and minor courses share the same slot across batches to prevent conflicts.
+
+\item Vision-based automation examples: detecting empty classrooms via CCTV to reallocate sessions instantly.
+
+\item QR code features: students can scan to view their updated personal timetable after any change.
+
+\item AI-powered suggestions: recommending optimal lab batches based on past attendance patterns.
+
+
+\item eather-based rescheduling: shifting physical classes to online mode during heavy rain alerts.
+\end{itemize}
+\newpage
+
+\section{Existing System}
+% Describe the present manual approaches to time-table scheduling. See into the present and previous semester time-table
+Present Manual Approach to Timetable Scheduling at IIIT Dharwad
+Timetable scheduling at IIIT Dharwad is currently carried out using a manual, slot-based system with the help of spreadsheets and static timetable templates. While this method provides a structured framework, it is still largely dependent on human coordination and adjustments, making it less adaptive to dynamic changes.
+Steps in the Current Manual Scheduling Process
+\begin{itemize}
+\item Course Information Collection – At the start of each semester, details such as course code, course name, LTPSC structure (Lecture, Tutorial, Practical, Semester, Credits), course instructor, and the batches or programs for which the course is offered are collected.
+\item Slot-Based Allocation – Fixed time slots (A1, B1, C1, etc. for lectures; L1–L15 for labs; A1-T, B2-T, etc. for tutorials) are predefined. Courses are manually assigned to these slots based on instructor availability and department requirements.
+\item Resource Mapping – Classrooms, labs, and equipment are assigned manually based on expected student strength and type of class (lecture, tutorial, or practical).
+\item Clash Checking – Coordinators manually check for conflicts in faculty schedules, student electives, and lab usage.
+\item Timetable Finalization – A final timetable is created in spreadsheet or image format, which is then circulated to faculty and students via email or notice boards.
+\end{itemize}
+\subsection{Present Semester Timetable}
+\begin{itemize}
+\item Lecture Slots: A1–E2, U, Z, etc. are each 1.5 hours long.
+\item Tutorial Slots: (e.g., D1-T, B3-T) are 1-hour sessions used for problem-solving or discussion.
+\item Lab Slots: L1–L15 are 2-hour practical sessions.
+\item Minor Slots: Early morning (07:30–09:00) and late evening (18:30 onwards) are reserved for minor courses.
+\item Color-Coding: Each slot is color-coded for quick identification.
+\item Example: b On Monday, A1 (09:00–10:00) is followed by L1 (10:00–12:00), and later by D1-T (12:15–12:30), with E2 scheduled in the afternoon.
+
+\end{itemize}
+\begin{figure}[b]
+    \centering
+    \includegraphics[width=1\linewidth]{curr.jpg}
+    \caption{Present semester time table}
+    \label{fig:placeholder}
+\end{figure}
+\newpage
+\subsection{Previous Semester Timetables}
+\begin{figure}[b]
+    \centering
+    \includegraphics[width=1\linewidth]{prev.jpg}
+    \caption{Previous semester time table}
+    \label{fig:placeholder}
+\end{figure}
+\begin{itemize}
+\item Slot Reassignment: Courses were often shuffled across slots to balance faculty workloads.
+\item Lab Distribution: Earlier labs were spread across multiple days, while recent timetables try to keep labs on the same day as the lecture.
+\item Elective Scheduling: In previous semesters, electives were scattered across different time slots, causing clashes. Now they are grouped into common slots.
+\item Half-Semester Courses: In earlier timetables, these were sometimes placed without clear separation, whereas now they are systematically scheduled.
+\end{itemize}
+\newpage
+\subsection{Limitations of the Manual Approach}
+\begin{itemize}
+\item Time-Consuming: Preparing and finalizing the timetable requires multiple iterations.
+\item Error-Prone: Manual clash detection can overlook scheduling conflicts.
+\item Rigid Structure: Making mid-semester changes is difficult without disrupting other classes.
+\item Lack of Automation: No integration with personal calendars or automatic notifications.
+\end{itemize}
+\newpage
+
+\section*{5. Comparison of Previous (Manual) and Proposed (Automated) System}
+
+The following table highlights the differences between the previously followed manual scheduling system 
+and the proposed automated timetable scheduling system.  
+
+\begin{longtable}{|>{\bfseries}m{0.25\linewidth}|m{0.33\linewidth}|m{0.33\linewidth}|}
+\hline
+\textbf{Aspect} & \textbf{Manual System} & \textbf{Automated System} \\
+\hline
+
+Class Timetable &
+\begin{itemize}
+    \item Created manually by academic section.  
+    \item Prone to human errors and conflicts.  
+    \item Multiple revisions and approvals required.  
+\end{itemize} &
+\begin{itemize}
+    \item Generated automatically by system.  
+    \item Faculty and classroom availability checked.  
+    \item Updates quickly without redoing full schedule.  
+\end{itemize} \\
+\hline
+
+Exam Timetable &
+\begin{itemize}
+    \item Planned manually based on course registrations.  
+    \item Students often faced back-to-back or clashing exams.  
+    \item Heavy administrative workload.  
+\end{itemize} &
+\begin{itemize}
+    \item Generated automatically using academic calendar.  
+    \item Avoids back-to-back clashes.  
+    \item Balances exam load across different days.  
+\end{itemize} \\
+\hline
+
+Seating Arrangement &
+\begin{itemize}
+    \item Assigned manually by invigilators/staff.  
+    \item No automated check to separate same-exam students.  
+    \item Relied on printed charts and manual cross-checking.  
+\end{itemize} &
+\begin{itemize}
+    \item Plans generated automatically.  
+    \item Ensures no two students of same exam share a desk.  
+    \item Provides printable seating charts and attendance sheets.  
+\end{itemize} \\
+\hline
+
+Overall &
+\begin{itemize}
+    \item Time-consuming and inefficient.  
+    \item High risk of errors or bias.  
+    \item Poor adaptability when changes occur.  
+\end{itemize} &
+\begin{itemize}
+    \item Saves time and reduces workload.  
+    \item Minimizes human error and ensures fairness.  
+    \item Scalable, flexible, and efficient for long-term use.  
+\end{itemize} \\
+\hline
+\end{longtable}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{prevExxxam.jpg}
+    \caption{Previous semester seating arrangement}
+    \label{fig:placeholder}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{prevExam.png}
+    \caption{Previous semester supplementary seating arrangement}
+    \label{fig:placeholder}
+\end{figure}
+
+
+\newpage
+
+
+
+
+
+
+
+
+
+
+
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{dfd01_pic.jpg}
+    \caption{Use case diagram.}
+    \label{fig:placeholder}
+\end{figure}
+\newpage
+
+\section{Requirements Modeling}
+
+\subsection{List of Requirements}  
+\begin{longtable}{|p{6cm}|p{8cm}|}
+\hline
+\textbf{Requirement} & \textbf{Description} \\
+\hline
+
+\multicolumn{2}{|c|}{\textbf{Functional Requirements}} \\
+\hline
+
+Resource Availability Tracking &
+\begin{itemize}
+    \item Maintain database of professors, classrooms, laboratories, lab assistants, and students.
+    \item Update availability in real-time based on schedules or events.
+    \item Allow manual overrides by administrators.
+\end{itemize} \\
+\hline
+
+Course Information Input &
+\begin{itemize}
+    \item Accept course details: Code, Name, LTPSC structure(explained above), Instructor, Target Audience.
+    \item Validate input before saving.
+    \item Class fuctional time is 9AM to 5PM and from Monday to Saturday.
+    \item In case of holidays , manual updation.
+\end{itemize} \\
+\hline
+
+Class Allocation Logic &
+\begin{itemize}
+    \item Ensure professors have at least a 3-hour gap between lectures.
+    \item Avoid back-to-back classes for the same professor.
+    \item Allow only one lecture/tutorial per course per day.
+    \item Schedule electives and minors in overlapping slots.
+\end{itemize} \\
+\hline
+
+Lab Scheduling Rules &
+\begin{itemize}
+    \item Labs should be on the same day as the related lecture.
+    \item Prevent overlapping labs needing the same resources.
+\end{itemize} \\
+\hline
+
+Student \& Professor Conflict Resolution &
+\begin{itemize}
+    \item Detect and resolve timetable clashes automatically.
+    \item Allow rescheduling based on availability.
+\end{itemize} \\
+\hline
+
+Lunch Break Management &
+\begin{itemize}
+    \item Schedule lunch breaks within mess operating hours.
+    \item Avoid any kind of lectures/lab during lunch periods.
+\end{itemize} \\
+\hline
+
+Half-Semester \& Special Courses &
+\begin{itemize}
+    \item Separate scheduling logic for half-semester courses.
+    \item Allocate project/workshop sessions without affecting regular classes.
+\end{itemize} \\
+\hline
+
+Automated Exam Timetable \& Seating Arrangement &
+\begin{itemize}
+    \item Generate exam timetables automatically along with class timetables.  
+    \item Assign classrooms dynamically based on student strength and course requirements.  
+    \item Implement seating arrangement logic to ensure that no two students taking the same exam are seated on the same desk.  
+    \item Allow administrators to override classroom or seating allocations if needed.  
+\end{itemize} \\
+\hline
+
+Exam Management Quality Constraints &
+\begin{itemize}
+    \item Ensure fairness in seating allocation to prevent malpractice.  
+    \item Guarantee quick timetable generation within seconds, even for large batches.  
+    \item Provide error-free assignments with conflict detection for overlapping exams.  
+    \item Maintain data privacy and security of exam-related information.  
+\end{itemize} \\
+\hline
+
+Color-Coded Visual Timetable &
+\begin{itemize}
+    \item Assign distinct colors for each course.
+    \item Include legend for clarity.
+\end{itemize} \\
+\hline
+
+Integration with External Platforms &
+\begin{itemize}
+    \item Export timetable to Google Calendar.
+    \item Send automated email/app notifications for changes.
+\end{itemize} \\
+\hline
+
+User Roles \& Permissions &
+\begin{itemize}
+    \item Admin: Create/edit timetable.
+    \item Professor: View timetable, request changes.
+    \item Student: View timetable for their batch/electives.
+\end{itemize} \\
+\hline
+
+\multicolumn{2}{|c|}{\textbf{Non-Functional Requirements}} \\
+\hline
+
+Performance &
+\begin{itemize}
+    \item Generate a complete timetable within 2--5 seconds.
+\end{itemize} \\
+\hline
+
+Scalability &
+\begin{itemize}
+    \item Handle 200+ courses, 100+ professors, and 2000+ students without performance issues.
+\end{itemize} \\
+\hline
+
+Usability &
+\begin{itemize}
+    \item Provide intuitive drag-and-drop UI for admins.
+    \item Support weekly and daily views.
+\end{itemize} \\
+\hline
+
+Reliability &
+\begin{itemize}
+    \item Daily backup of timetable data.
+    \item Ensure 99.5\% uptime.
+\end{itemize} \\
+\hline
+
+Security &
+\begin{itemize}
+    \item Role-based access control.
+    \item Log all changes for auditing.
+\end{itemize} \\
+\hline
+
+Maintainability &
+\begin{itemize}
+    \item Modular code structure for adding new rules easily.
+\end{itemize} \\
+\hline
+
+Compatibility &
+\begin{itemize}
+    \item Support major browsers (Chrome, Firefox, Edge).
+    \item Mobile-friendly responsive design.
+\end{itemize} \\
+\hline
+
+\end{longtable}
+\newpage
+
+\section{Software Design}
+
+In this section, we present the software design aspects of the system. One of the most effective tools for representing the flow of information and processes is the \textbf{Data Flow Diagram (DFD)}. A DFD visually depicts how data moves through the system, showing inputs, processes, storage, and outputs. It helps in understanding both the logical flow and functional decomposition of the system. Typically, a DFD is created at multiple levels: starting with a high-level context diagram (Level 0) and progressively breaking down into more detailed diagrams (Level 1, Level 2, etc.).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]
+    {lvl0.jpg}
+    \caption{DFD Level 0 (Context Diagram)}
+    \label{fig:dfd0}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{level1_pic.jpg}
+    \caption{DFD Level 1}
+    \label{fig:dfd1}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{level2_pic.jpg}
+    \caption{DFD Level 2}
+    \label{fig:dfd1}
+\end{figure}
+
+\newpage
+\section{Low Level Design}
+
+% Define C++ code style
+\lstdefinestyle{cppstyle}{
+  language=C++,
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue},
+  stringstyle=\color{teal},
+  commentstyle=\color{gray},
+  numbers=left,
+  numberstyle=\tiny,
+  stepnumber=1,
+  numbersep=5pt,
+  showspaces=false,
+  showstringspaces=false,
+  tabsize=2,
+  breaklines=true,
+  frame=single,
+  captionpos=b
+}
+
+
+
+\section*{Data Structures}
+
+\begin{lstlisting}[style=cppstyle, caption=Faculty Information]
+struct Faculty {
+    int facultyID;
+    string name;
+    vector<string> courses;         // Courses taught
+    vector<string> availableSlots;  // Time slots available
+};
+\end{lstlisting}
+
+\begin{lstlisting}[style=cppstyle, caption=Course Information]
+struct Course {
+    string courseCode;
+    string courseName;
+    int credits;
+    string facultyID;
+    vector<string> preferredSlots;
+};
+\end{lstlisting}
+
+\begin{lstlisting}[style=cppstyle, caption=Classroom/Lab Information]
+struct Room {
+    string roomID;
+    int capacity;
+    bool isLab;
+    vector<string> availableSlots;
+};
+\end{lstlisting}
+
+\begin{lstlisting}[style=cppstyle, caption=Exam Information]
+struct Exam {
+    string courseCode;
+    string examDate;
+    string roomID;
+};
+\end{lstlisting}
+
+\begin{lstlisting}[style=cppstyle, caption=Timetable Entry]
+struct TimeTableEntry {
+    string day;
+    string timeSlot;
+    string courseCode;
+    string facultyID;
+    string roomID;
+};
+\end{lstlisting}
+
+\begin{lstlisting}[style=cppstyle, caption=Timetable]
+struct TimeTable {
+    vector<TimeTableEntry> entries;
+};
+\end{lstlisting}
+
+\section*{Function Declarations and Descriptions}
+
+\subsection*{1. Admin Module}
+\begin{lstlisting}[style=cppstyle]
+void inputSubjects(vector<Course>& courseList);
+void inputExams(vector<Exam>& examList);
+void inputRooms(vector<Room>& roomList);
+void finalizeTimeTable(TimeTable& tt);
+\end{lstlisting}
+
+\subsection*{2. Faculty Module}
+\begin{lstlisting}[style=cppstyle]
+void provideAvailability(Faculty& f, vector<string> slots);
+void viewFacultyTimeTable(Faculty f, TimeTable tt);
+\end{lstlisting}
+
+\subsection*{3. Student Module}
+\begin{lstlisting}[style=cppstyle]
+void requestTimeTable(string studentID);
+void viewStudentTimeTable(string studentID, TimeTable tt);
+\end{lstlisting}
+
+\subsection*{4. Course Management Module}
+\begin{lstlisting}[style=cppstyle]
+void collectCourseDetails(Course& c);
+void updateCourseDetails(Course& c, string newName, int newCredits);
+\end{lstlisting}
+
+\subsection*{5. Faculty Management Module}
+\begin{lstlisting}[style=cppstyle]
+void collectFacultyInfo(Faculty& f);
+void updateFacultyDetails(Faculty& f, vector<string> newCourses);
+\end{lstlisting}
+
+\subsection*{6. Time-Table Generation Module}
+\begin{lstlisting}[style=cppstyle]
+void collectDetails(vector<Course> courses, vector<Faculty> faculties, vector<Room> rooms);
+void applySchedulingRules(TimeTable& tt, vector<Course> courses, vector<Faculty> faculties, vector<Room> rooms);
+void generateTimeTable(TimeTable& tt, vector<Course> courses, vector<Faculty> faculties, vector<Room> rooms, vector<Exam> exams);
+bool validateTimeTable(TimeTable tt);
+\end{lstlisting}
+
+\subsection*{7. Database Management Module}
+\begin{lstlisting}[style=cppstyle]
+void saveCourseDB(vector<Course> courses);
+vector<Course> loadCourseDB();
+
+void saveFacultyDB(vector<Faculty> faculties);
+vector<Faculty> loadFacultyDB();
+
+void saveExamDB(vector<Exam> exams);
+vector<Exam> loadExamDB();
+
+void saveRoomDB(vector<Room> rooms);
+vector<Room> loadRoomDB();
+
+void saveTimeTableDB(TimeTable tt);
+TimeTable loadTimeTableDB();
+\end{lstlisting}
+
+\subsection*{8. View/Retrieve Timetable Module}
+\begin{lstlisting}[style=cppstyle]
+TimeTable retrieveFinalTimeTable();
+void viewTimeTable(TimeTable tt, string userType, string userID);
+\end{lstlisting}
+\newpage
+
+
+\section{Module}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{waste.jpg}
+    \caption{Module}
+    \label{fig:placeholder}
+\end{figure}
+ \section{Introduction to Data Dictionary}
+
+A \emph{data dictionary} is a centralized repository that stores metadata—that is, information about the data used by a system. It describes elements such as names, definitions, data types, lengths, constraints, formats, and relationships, and may also document usage, ownership, and update frequency. A well-constructed data dictionary enhances consistency, clarity, and effective data governance across software systems. 
+
+\section{Standard Notations in Data Dictionaries}
+
+In structured analysis and data modeling, several notations are commonly used to define data constructs and their relationships:
+
+\begin{itemize}[label=\textbullet]
+    \item \textbf{Composition:} \(X = a + b\) indicates that \(X\) is composed of data elements \(a\) and \(b\).
+    \item \textbf{Selection (OR):} \(X = [a \mid b]\) means \(X\) consists of either \(a\) or \(b\).
+    \item \textbf{Sequence (AND):} \(X = a\; b\) or use of \(+\) indicates both \(a\) and \(b\) are required—sequentially.
+    \item \textbf{Repetition:} 
+    \begin{itemize}
+        \item \(X = y[a]\) indicates \(y\) or more occurrences of \(a\).
+        \item \(X = [a]z\) indicates up to \(z\) occurrences of \(a\).
+        \item \(X = y[a]z\) indicates between \(y\) and \(z\) occurrences.
+    \end{itemize}
+    These notations help precisely define data structures encountered in Diagrams and Data Dictionaries. :contentReference[oaicite:1]{index=1}
+\end{itemize}
+
+\section{Application to the Time-Table Diagrams}
+
+In the context of the Time-Table Automation System diagrams (such as DFD-like diagrams you provided), the standard notations map naturally onto the graphical symbols as follows:
+
+\begin{itemize}[label=\textbullet]
+    \item \textbf{Rectangles (External Entities):} Entities like \texttt{Student}, \texttt{Faculty}, and \texttt{Admin} represent sources or sinks of data—e.g., \emph{Student requests timetable}, \emph{Admin inputs subjects}.
+    \item \textbf{Rounded Rectangles (Processes):} Actions such as \emph{Generate Timetable} or \emph{Collect Input Data} correspond to operations on one or more data elements—often combining (composition, \(+\)), selecting options (e.g., choose either class or exam timetable), or sequencing tasks.
+    \item \textbf{Cylinders (Databases / Data Stores):} Examples include \texttt{Class and Subject DB}, \texttt{Exam Schedule DB}, and \texttt{Room and Resource DB}. These components serve as repositories for structured data elements, potentially containing repetitions (e.g., multiple subjects, multiple time slots).
+    \item \textbf{Arrows (Data Flow):} Indicate the direction and movement of data—such as ``faculty availability'' flowing into the data dictionary or ``class timetable'' flowing out to the student. If multiple items (e.g., subjects + rooms + capacity) are sent together, you might interpret that as composition; if selection or conditional routing is implied (e.g., exam or class data), that maps to the selection notation.
+\end{itemize}
+
+By relating each graphical symbol back to the underlying data constructs defined via these notations, the Data Dictionary can ensure consistency and clarity in documentation, design, and implementation of your Time-Table Automation System.
+
+\newpage
+\section{Coding / Implementation}
+
+The implementation of the \textbf{Automated Timetable Scheduling System} will
+be carried out using a modern, modular, and scalable technology stack. The key
+components of the tech stack are as follows:
+
+\subsection{Programming Language}
+\begin{itemize}
+    \item \textbf{Python 3.12+} --- Chosen for its simplicity, wide community support,
+    and availability of libraries for scheduling, optimization, and data management.
+\end{itemize}
+
+\subsection{Frameworks and Libraries}
+\begin{itemize}
+    \item \textbf{Flask / FastAPI} --- To build REST APIs for timetable generation and
+    exam scheduling modules.
+    \item \textbf{Pandas \& NumPy} --- For efficient handling and manipulation of course,
+    faculty, and timetable datasets.
+    \item \textbf{SQLAlchemy} --- ORM for managing persistent data (faculty, courses, rooms).
+    \item \textbf{Matplotlib / Plotly} --- For generating color-coded visual timetables.
+    \item \textbf{Google API Client} --- For integration with Google Calendar and notifications.
+\end{itemize}
+
+\subsection{Database}
+\begin{itemize}
+    \item \textbf{PostgreSQL / SQLite} --- Relational database to store courses, faculty, rooms,
+    exams, and generated timetables. 
+    \item Provides reliability, scalability, and ACID-compliant transactions.
+\end{itemize}
+
+\subsection{Front-End (Optional Extension)}
+\begin{itemize}
+    \item \textbf{React.js with TailwindCSS} --- For a responsive, intuitive UI enabling
+    admin, faculty, and student interactions.
+    \item \textbf{FullCalendar.js} --- For displaying weekly/daily timetable views with
+    drag-and-drop features for admins.
+\end{itemize}
+
+\subsection{Version Control and Collaboration}
+\begin{itemize}
+    \item \textbf{Git \& GitHub} --- For version control, collaborative development, and CI/CD.
+\end{itemize}
+
+\subsection{Testing and Quality Assurance}
+\begin{itemize}
+    \item \textbf{PyTest / Unittest} --- For writing automated unit tests and integration tests.
+    \item \textbf{Coverage.py} --- To ensure code coverage and maintain high reliability.
+\end{itemize}
+
+\subsection{Deployment}
+\begin{itemize}
+    \item \textbf{Docker} --- Containerization for consistent deployment across environments.
+    \item \textbf{Heroku / AWS EC2} --- Potential platforms for hosting the system.
+\end{itemize}
+
+\subsection{Summary}
+The chosen technology stack ensures that the system is:
+\begin{itemize}
+    \item Scalable to handle 200+ courses, 100+ faculty, and 2000+ students.
+    \item Maintainable due to modular code design.
+    \item Secure with role-based access and database protection.
+    \item User-friendly with both command-line and web-based access points.
+\end{itemize}
+
+\newpage
+
+
+
+\newpage
+
+
+\section{Conclusion}
+\subsection{Final Thoughts}
+The Automated Timetable Scheduling System is designed to address the persistent challenges faced by academic institutions in planning and managing schedules. By automating complex allocation processes, it not only saves time but also ensures fairness, accuracy, and compliance with institutional policies. The system’s adaptability allows it to accommodate various academic structures, course patterns, and resource constraints, making it suitable for long-term use. With its focus on efficiency, user experience, and scalability, the project has the potential to become an essential tool for modern academic administration.
+  
+\newpage
+ 
+
+
+  
+%%%***************************************************************************************  
+%\addcontentsline{toc}{section}{References}
+%\bibliographystyle{numeric}
+\settocbibname{References}
+
+\begin{thebibliography}{9}
+
+\bibitem{goktug2013}
+Goktug, A. N., Chai, S. C., \& Chen, T. (2013). 
+A timetable organizer for the planning and implementation of screenings in manual or semi-automation mode. 
+\textit{Journal of Biomolecular Screening}, 18(8), 938--942. 
+doi:10.1177/1087057113493720
+
+\bibitem{shah2018}
+Shah, M., Patel, K., \& Bhatt, C. (2018). 
+Automated timetable generation using genetic algorithm. 
+\textit{International Journal of Computer Applications}, 182(18), 1--5. 
+doi:10.5120/ijca2018917461
+
+\end{thebibliography}
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{document}
