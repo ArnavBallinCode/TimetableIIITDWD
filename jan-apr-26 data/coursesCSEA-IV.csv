@@ -1,0 +1,13 @@
+Course_Code,Course_Title,L-T-P-S-C,Faculty,Semester_Half,Elective,Students,basket,is_combined
+CS206,Theory of Computing,3-1-0-0-4,Dr. Animesh Roy,0,0,86,0,0
+CS266,Database Management System,3-0-2-0-4,Dr. Pramod Yelmewad,0,0,85,0,0
+CS304,Artificial Intelligence,3-1-0-0-4,Dr. Krishnendu Ghosh,0,0,83,0,0
+CS267,Systems and Usable Security,3-1-0-0-2,Dr. Malay Kumar,1,0,83,0,0
+CS265,Software Engineering,3-1-0-0-2,Dr. Sunil Kumar P V,2,0,85,0,0
+HS261,Ethics and Values / Environmental Studies,3-0-0-0-3,Dr. Aswath Babu H,0,0,86,0,0
+EC255,Embedded Intelligent Sensing Systems,2-0-2-4-2,Dr. Sibasankar Padhy,1,1,30,1,0
+NEW,Edge AI Systems Design,3-1-0-0-2,Dr. Deepak K T,1,1,20,1,0
+CS252,Digital Forensic,3-1-0-0-2,Dr. Abdul Wahid,2,1,13,2,0
+CS261,Operating System,3-1-0-0-2,Dr. Siddharth R,2,1,41,2,0
+EC257,Causal Inference,3-1-0-0-2,Dr. Chinmayananda A,2,1,37,2,0
+CS253,Time Series Forecasting and Applications,3-1-0-0-2,Dr. Nataraj,2,1,105,2,0
