@@ -1,4 +1,3 @@
-import json
 import random
 import re
 import time
@@ -7,6 +6,10 @@ from pathlib import Path
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
+try:
+    from timetable_automation.core import load_time_slots, save_workbook_with_fallback
+except ModuleNotFoundError:
+    from core import load_time_slots, save_workbook_with_fallback
 
 random.seed(42)
 
@@ -100,27 +103,9 @@ def _semester_suffix(path_obj, odd_suffix, even_suffix):
     return even_suffix if f"-{even_suffix}" in path_obj.name else odd_suffix
 
 
-with open(DATA_DIR / "time_slots.json", encoding="utf-8") as f:
-    slots = json.load(f)["time_slots"]
-
-def t2m(t):
-    h, m = map(int, t.split(":"))
-    return h*60 + m
-
-slots_norm = [
-    {
-        "key": f"{s['start']}-{s['end']}",
-        "start": s['start'],
-        "end": s['end'],
-        "dur": (t2m(s["end"]) - t2m(s["start"])) / 60.0
-    }
-    for s in slots
-]
+slots_norm, slot_keys, slot_dur = load_time_slots(DATA_DIR / "time_slots.json")
 # elective_slots_by_year[year_tag][day] = set of slot_keys used by electives (L/T) of that year
 elective_slots_by_year = {}
-slots_norm.sort(key=lambda x: t2m(x["start"]))
-slot_keys = [s["key"] for s in slots_norm]
-slot_dur = {s["key"]: s["dur"] for s in slots_norm}
 
 coursesAI, courses_ai_path = _load_course_records("coursesCSEA-I.csv", "coursesCSEA-II.csv")
 coursesBI, courses_bi_path = _load_course_records("coursesCSEB-I.csv", "coursesCSEB-II.csv")
@@ -1267,6 +1252,7 @@ if __name__ == "__main__":
         combined_7_courses = (s7_block1 or []) + (s7_block2 or [])
         merge_and_color(ws6, combined_7_courses)
 
-    output_path = BASE_DIR / "Balanced_Timetable_latest.xlsx"
-    wb.save(output_path)
+    output_path = save_workbook_with_fallback(
+        wb, BASE_DIR / "Balanced_Timetable_latest.xlsx"
+    )
     print("✅ Evenly balanced timetable saved in", output_path)

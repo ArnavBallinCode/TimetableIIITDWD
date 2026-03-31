@@ -1,10 +1,20 @@
+"""
+Legacy timetable variant kept for comparison during scheduler tuning.
+
+For active/maintained scheduling behavior, use `timetable_automation/timetable.py`.
+Both files now share core utilities from `timetable_automation/core.py`.
+"""
+
 import pandas as pd
-import json
 import random
 import re
 import time
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
+try:
+    from timetable_automation.core import load_time_slots, save_workbook_with_fallback
+except ModuleNotFoundError:
+    from core import load_time_slots, save_workbook_with_fallback
 
 random.seed(42)
 
@@ -21,25 +31,7 @@ colors = [
 thin = Border(left=Side(style='thin'), right=Side(style='thin'),
               top=Side(style='thin'), bottom=Side(style='thin'))
 
-with open("data/time_slots.json") as f:
-    slots = json.load(f)["time_slots"]
-
-def t2m(t):
-    h, m = map(int, t.split(":"))
-    return h*60 + m
-
-slots_norm = [
-    {
-        "key": f"{s['start']}-{s['end']}",
-        "start": s['start'],
-        "end": s['end'],
-        "dur": (t2m(s["end"]) - t2m(s["start"])) / 60.0
-    }
-    for s in slots
-]
-slots_norm.sort(key=lambda x: t2m(x["start"]))
-slot_keys = [s["key"] for s in slots_norm]
-slot_dur = {s["key"]: s["dur"] for s in slots_norm}
+slots_norm, slot_keys, slot_dur = load_time_slots("data/time_slots.json")
 
 coursesAI = pd.read_csv("data/coursesCSEA-I.csv").to_dict(orient="records")
 coursesBI = pd.read_csv("data/coursesCSEB-I.csv").to_dict(orient="records")
@@ -848,6 +840,5 @@ if __name__ == "__main__":
     combined_7_courses = (s7_block1 or []) + (s7_block2 or [])
     merge_and_color(ws6, combined_7_courses)
 
-    name = f"Balanced_Timetable_latest.xlsx"
-    wb.save(name)
+    name = save_workbook_with_fallback(wb, "Balanced_Timetable_latest.xlsx")
     print("✅ Evenly balanced timetable saved in", name)
