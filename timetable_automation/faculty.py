@@ -265,10 +265,8 @@ for fac, table in faculty_slots.items():
         max_len = 0
         col_letter = col[0].column_letter
         for cell in col:
-            try:
-                max_len = max(max_len, len(str(cell.value)))
-            except (TypeError, ValueError):
-                pass
+            value_len = 0 if cell.value is None else len(str(cell.value))
+            max_len = max(max_len, value_len)
         ws.column_dimensions[col_letter].width = min(max_len + 2, 60)
 
 wb_out.save("Faculty_Timetable.xlsx")

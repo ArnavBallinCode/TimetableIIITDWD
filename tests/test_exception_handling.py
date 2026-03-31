@@ -1,5 +1,5 @@
 from pathlib import Path
-import re
+import ast
 
 import pytest
 
@@ -18,7 +18,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 )
 def test_target_files_do_not_use_bare_or_broad_exception_handlers(relative_path):
     source = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
-    assert not re.search(r"except\s*:", source), f"Found bare except in {relative_path}"
-    assert not re.search(
-        r"except\s+Exception\s*:", source
-    ), f"Found broad except Exception in {relative_path}"
+    tree = ast.parse(source, filename=relative_path)
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ExceptHandler):
+            continue
+        assert node.type is not None, f"Found bare except in {relative_path}"
+        if isinstance(node.type, ast.Name):
+            assert node.type.id != "Exception", f"Found broad except Exception in {relative_path}"

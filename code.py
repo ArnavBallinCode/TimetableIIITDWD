@@ -354,12 +354,9 @@ for col_cells in ws.columns:
     max_len = 0
     col = col_cells[0].column_letter
     for cell in col_cells:
-        try:
-            v = str(cell.value or "")
-            if len(v) > max_len:
-                max_len = len(v)
-        except (TypeError, ValueError):
-            pass
+        v = "" if cell.value is None else str(cell.value)
+        if len(v) > max_len:
+            max_len = len(v)
     ws.column_dimensions[col].width = min(max(10, max_len + 2), 60)
 
 
