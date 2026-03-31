@@ -1,0 +1,14 @@
+Course_Code,Course_Title,L-T-P-S-C,Faculty,Semester_Half,Elective,Students,basket,is_combined
+MA163,Linear Algebra,3-1-0-0-2,Dr. Anand P. Barangi,2,0,66,0,1
+CS162,Optimization,3-1-0-0-2,Dr. Dibyajyoti Guha,1,0,66,0,1
+HS161,English Language and Communication,3-0-0-0-3,Dr. Aswath Babu H,0,0,66,0,1
+CS163,Data Structures and Algorithms,3-0-2-0-4,Dr. Prabhu Prasad,0,0,66,0,0
+CS164,Computer Architecture,3-0-2-0-2,Dr. Jagadish D N,1,0,66,0,0
+EC162,Network Analysis,3-0-0-0-3,Dr. Somen Bhattacharjee,0,0,66,0,0
+CS154,Introduction to Data Analytics,3-1-0-0-2,Dr. Abdul Wahid,1,1,11,1,0
+HS159,Principles of Quantum Physics,3-1-0-0-2,Dr. Aswath Babu H,0,1,19,1,0
+ASD152,Visual Design-Principles and Application in Product Communication,3-1-0-0-2,Dr. Sandesh P,1,1,20,1,0
+DS151,Linux for Engineers,3-1-0-0-2,Dr. Shirshendu L,2,1,20,2,0
+EC156,Introduction to Sensor Technology,3-0-2-0-2,Dr. Muthusankar Eswaran,1,1,20,1,0
+CS151,Introduction to Cybersecurity,3-1-0-0-2,"Dr. Rajendra Hegadi",2,1,20,2,0
+DA151,Introduction to Financial Analytics,3-1-0-0-2,Prof. S R M Prasanna,2,1,20,2,0

@@ -1,0 +1,256 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\geometry{margin=1in}
+\onehalfspacing
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  urlcolor=blue
+}
+
+\title{Bug Report and Impact Analysis\\\large Timetable Generator (Open Issues)}
+\author{Roll Number: 24bcs015}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Executive Summary}
+This report translates all currently open GitHub issues into plain English while preserving technical traceability for developers. The objective is to help both non-technical stakeholders and engineering contributors understand:
+\begin{itemize}[leftmargin=1.2cm]
+  \item what each issue means,
+  \item why it matters in real operations,
+  \item how it impacts timetable reliability, and
+  \item what corrective action is recommended.
+\end{itemize}
+
+\section{Issue Collection Method}
+Open issues were collected directly from the repository using GitHub CLI:
+\begin{quote}
+\texttt{gh issue list --repo ArnavBallinCode/TimetableIIITDWD --state open --json number,title,body,url}
+\end{quote}
+A frozen snapshot was saved to \texttt{docs/reports/open\_issues.json} for reporting consistency.
+
+\section{Open Issue Index}
+\begin{longtable}{p{0.10\textwidth}p{0.63\textwidth}p{0.20\textwidth}}
+\toprule
+ID & Title & Risk Profile \\
+\midrule
+\endhead
+\#25 & C004 special-casing hides cross-branch conflict risk & High \\
+\#23 & Duplicate scheduling scripts; no single source of truth & High \\
+\#22 & Room C004 special-cased many times; not configurable & High \\
+\#20 & No post-generation validation for conflicts & Critical \\
+\#19 & Hardcoded start date in timetable generator & Medium \\
+\#18 & Interactive input blocks CI and automation & Medium \\
+\#17 & Bare exception handlers hide failures & High \\
+\#16 & Hardcoded file paths reduce portability & High \\
+\#15 & Dependency manifest missing for fresh setup & Medium \\
+\#14 & Test import structure broken & High \\
+\#8 & Performance and scalability concerns & Medium \\
+\#7 & C004 blocking may reject valid placements & High \\
+\#6 & Capacity enforcement may misallocate or omit classes & Critical \\
+\#4 & Duplicate-scheduled class disappears in output & High \\
+\#3 & Scheduled classes missing in final output & Critical \\
+\#2 & Unscheduled classes omitted without warning & Critical \\
+\bottomrule
+\end{longtable}
+
+\section{Issue-by-Issue Plain-English Analysis}
+
+\subsection*{Issue \#25: C004 special-casing hides cross-branch conflict risk}
+\textbf{Issue Link:} \href{https://github.com/ArnavBallinCode/TimetableIIITDWD/issues/25}{\#25}
+
+\textbf{Plain English:} One room (C004) is handled with unique code rules. If two departments request C004 at similar times, the system can miss a real clash when course names are not perfectly consistent.
+
+\textbf{Developer Note:} Hardcoded logic around \texttt{c004\_occupancy} creates brittle behavior and should be replaced by config-driven room policies.
+
+\textbf{Real-world consequence:} Students and faculty may be told to use the same room at overlapping times.
+
+\textbf{Recommended action:} Move C004 rules to config and enforce canonical course IDs before overlap checks.
+
+\subsection*{Issue \#23: Duplicate scheduling scripts; no single source of truth}
+\textbf{Issue Link:} \href{https://github.com/ArnavBallinCode/TimetableIIITDWD/issues/23}{\#23}
+
+\textbf{Plain English:} Multiple scripts do similar scheduling jobs. A fix in one script may not be present in another.
+
+\textbf{Developer Note:} Logic duplication increases divergence risk and slows defect closure.
+
+\textbf{Real-world consequence:} Different teams may run different scripts and get conflicting outputs.
+
+\textbf{Recommended action:} Extract shared scheduling core and keep thin, purpose-specific entrypoints.
+
+\subsection*{Issue \#22: Room C004 is heavily hardcoded and not configurable}
+\textbf{Issue Link:} \href{https://github.com/ArnavBallinCode/TimetableIIITDWD/issues/22}{\#22}
+
+\textbf{Plain English:} The software assumes fixed rules for one specific room in many places.
+
+\textbf{Developer Note:} Hardcoded constants increase maintenance burden and violate configuration-driven design.
+
+\textbf{Real-world consequence:} Any policy change for C004 requires risky manual code edits.
+
+\textbf{Recommended action:} Move room-specific constraints to \texttt{rooms.csv} or \texttt{room\_rules.json}.
+
+\subsection*{Issue \#20: No validation after timetable generation}
+\textbf{Issue Link:} \href{https://github.com/ArnavBallinCode/TimetableIIITDWD/issues/20}{\#20}
+
+\textbf{Plain English:} After creating the timetable, the system does not automatically confirm whether there are room/faculty conflicts.
+
+\textbf{Developer Note:} Validation is optional and external, not enforced in the generation pipeline.
+
+\textbf{Real-world consequence:} Incorrect timetables may be published and discovered only at execution time.
+
+\textbf{Recommended action:} Make clash-checking mandatory before writing final outputs.
+
+\subsection*{Issue \#19: Hardcoded semester start date}
+\textbf{Issue Link:} \href{https://github.com/ArnavBallinCode/TimetableIIITDWD/issues/19}{\#19}
+
+\textbf{Plain English:} One scheduler uses a fixed date, so it can generate outdated schedules.
+
+\textbf{Developer Note:} Temporal parameters should be runtime inputs, not compile-time constants.
+
+\textbf{Real-world consequence:} Timetable dates can be wrong for the current semester.
+
+\textbf{Recommended action:} Use CLI arguments or config for start/end dates.
+
+\subsection*{Issue \#18: Interactive input blocks automation}
+\textbf{Issue Link:} \href{https://github.com/ArnavBallinCode/TimetableIIITDWD/issues/18}{\#18}
+
+\textbf{Plain English:} The script waits for keyboard input and cannot run unattended.
+
+\textbf{Developer Note:} Module-level \texttt{input()} calls break batch execution and CI workflows.
+
+\textbf{Real-world consequence:} Scheduled nightly or pipeline jobs fail or hang.
+
+\textbf{Recommended action:} Accept non-interactive flags and keep prompts as optional fallback.
+
+\subsection*{Issue \#17: Broad exception handling hides errors}
+\textbf{Issue Link:} \href{https://github.com/ArnavBallinCode/TimetableIIITDWD/issues/17}{\#17}
+
+\textbf{Plain English:} Some errors are silently ignored, so the run appears successful even when data is corrupted.
+
+\textbf{Developer Note:} Bare \texttt{except} blocks suppress actionable diagnostics and mask failure modes.
+
+\textbf{Real-world consequence:} Incorrect timetables are produced with no warning.
+
+\textbf{Recommended action:} Catch specific exceptions, log context, and fail fast for critical errors.
+
+\subsection*{Issue \#16: Hardcoded file paths reduce portability}
+\textbf{Issue Link:} \href{https://github.com/ArnavBallinCode/TimetableIIITDWD/issues/16}{\#16}
+
+\textbf{Plain English:} Scripts expect files in exact locations, so moving the project can break execution.
+
+\textbf{Developer Note:} Strong path coupling prevents environment-independent deployment.
+
+\textbf{Real-world consequence:} Setup friction increases and operational failures occur on new systems.
+
+\textbf{Recommended action:} Convert all paths to CLI/config inputs with clear missing-file messages.
+
+\subsection*{Issue \#15: Dependency setup documentation missing}
+\textbf{Issue Link:} \href{https://github.com/ArnavBallinCode/TimetableIIITDWD/issues/15}{\#15}
+
+\textbf{Plain English:} A fresh machine cannot run the project reliably because required packages are not clearly declared for end users.
+
+\textbf{Developer Note:} Missing packaging metadata blocks reproducible environments.
+
+\textbf{Real-world consequence:} New contributors lose time resolving package failures manually.
+
+\textbf{Recommended action:} Maintain complete dependency manifests and setup instructions.
+
+\subsection*{Issue \#14: Tests fail due to package import structure}
+\textbf{Issue Link:} \href{https://github.com/ArnavBallinCode/TimetableIIITDWD/issues/14}{\#14}
+
+\textbf{Plain English:} Tests cannot import expected functions, so quality checks fail before logic is tested.
+
+\textbf{Developer Note:} Package initialization and exported API surface are inconsistent.
+
+\textbf{Real-world consequence:} Teams cannot trust CI status as a meaningful quality signal.
+
+\textbf{Recommended action:} Keep package init and public API exports aligned with test expectations.
+
+\subsection*{Issue \#8: Performance and scalability risk}
+\textbf{Issue Link:} \href{https://github.com/ArnavBallinCode/TimetableIIITDWD/issues/8}{\#8}
+
+\textbf{Plain English:} The scheduler may become slow on larger datasets.
+
+\textbf{Developer Note:} Current loop-heavy approach likely has hotspots under high combinatorial load.
+
+\textbf{Real-world consequence:} Timetable generation may exceed acceptable operational windows.
+
+\textbf{Recommended action:} Add benchmarks, profile hotspots, and set performance regression checks in CI.
+
+\subsection*{Issue \#7: C004 blocking may reject valid placements}
+\textbf{Issue Link:} \href{https://github.com/ArnavBallinCode/TimetableIIITDWD/issues/7}{\#7}
+
+\textbf{Plain English:} The conflict guard for C004 can be too strict and block classes that could actually be scheduled.
+
+\textbf{Developer Note:} Over-conservative occupancy logic can reduce feasible scheduling space.
+
+\textbf{Real-world consequence:} More classes appear unscheduled, increasing manual intervention.
+
+\textbf{Recommended action:} Add explicit logging for block reasons and path tests for cross-branch scenarios.
+
+\subsection*{Issue \#6: Capacity enforcement may fail silently}
+\textbf{Issue Link:} \href{https://github.com/ArnavBallinCode/TimetableIIITDWD/issues/6}{\#6}
+
+\textbf{Plain English:} Classes can be assigned to too-small rooms, or removed without clear explanation.
+
+\textbf{Developer Note:} Capacity checks are not consistently enforced across all placement paths.
+
+\textbf{Real-world consequence:} Overcrowding risk and missing classes in published timetable.
+
+\textbf{Recommended action:} Enforce capacity as a hard constraint and emit structured unscheduled reports.
+
+\subsection*{Issue \#4: Duplicate-scheduled class disappears}
+\textbf{Issue Link:} \href{https://github.com/ArnavBallinCode/TimetableIIITDWD/issues/4}{\#4}
+
+\textbf{Plain English:} If a class is accidentally scheduled twice, it can vanish from final output.
+
+\textbf{Developer Note:} Deduplication/output reconciliation likely drops entries without audit trace.
+
+\textbf{Real-world consequence:} Faculty and students may not see a required class at all.
+
+\textbf{Recommended action:} Add duplicate detection policy with explicit conflict logs and deterministic retention.
+
+\subsection*{Issue \#3: Final timetable may appear empty}
+\textbf{Issue Link:} \href{https://github.com/ArnavBallinCode/TimetableIIITDWD/issues/3}{\#3}
+
+\textbf{Plain English:} The system can claim scheduling happened, yet final files show no classes.
+
+\textbf{Developer Note:} Data handoff from scheduling state to export stage is unreliable for some paths.
+
+\textbf{Real-world consequence:} Operational trust collapses because output contradicts runtime logs.
+
+\textbf{Recommended action:} Add output integrity assertions comparing scheduled entries vs exported entries.
+
+\subsection*{Issue \#2: Unscheduled classes omitted with no warning}
+\textbf{Issue Link:} \href{https://github.com/ArnavBallinCode/TimetableIIITDWD/issues/2}{\#2}
+
+\textbf{Plain English:} When rooms are full, new classes may be dropped silently.
+
+\textbf{Developer Note:} Failure paths do not consistently propagate to user-visible summaries.
+
+\textbf{Real-world consequence:} Missing classes are discovered late, often after publication.
+
+\textbf{Recommended action:} Emit mandatory unscheduled-class report with reasons and non-zero exit in strict mode.
+
+\section{Cross-Issue Themes}
+\begin{enumerate}[leftmargin=1.2cm]
+  \item \textbf{Transparency gap:} silent failures and missing warnings are a repeated pattern.
+  \item \textbf{Configuration gap:} room policies and paths are often hardcoded.
+  \item \textbf{Validation gap:} post-generation checks are not enforced as release gates.
+  \item \textbf{Maintainability gap:} duplicated scripts and uneven APIs increase long-term risk.
+\end{enumerate}
+
+\section*{Conclusion}
+The open issue set indicates that the highest business risk is not a single algorithmic failure but a reliability gap in validation, observability, and configuration management. Prioritizing conflict validation, unscheduled-class reporting, and consolidation of scheduling logic will yield the highest impact for both end users and developers.
+
+\end{document}

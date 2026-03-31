@@ -1,8 +1,10 @@
-import pandas as pd
 import json
 import random
 import re
 import time
+from pathlib import Path
+
+import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
 
@@ -26,7 +28,79 @@ colors = [
 thin = Border(left=Side(style='thin'), right=Side(style='thin'),
               top=Side(style='thin'), bottom=Side(style='thin'))
 
-with open("data/time_slots.json") as f:
+BASE_DIR = Path(__file__).resolve().parents[1]
+DATA_DIR = BASE_DIR / "data"
+
+
+def _normalize_course_dataframe(df):
+    """Normalize course CSV headers across old and new semester formats."""
+    rename_map = {}
+    for col in df.columns:
+        low = str(col).strip().lower()
+        if low == "course_code":
+            rename_map[col] = "Course_Code"
+        elif low == "course_title":
+            rename_map[col] = "Course_Title"
+        elif low in {"l-t-p-s-c", "l_t_p_s_c", "ltp"}:
+            rename_map[col] = "L-T-P-S-C"
+        elif low == "faculty":
+            rename_map[col] = "Faculty"
+        elif low == "semester_half":
+            rename_map[col] = "Semester_Half"
+        elif low == "elective":
+            rename_map[col] = "Elective"
+        elif low in {"electivebasket", "elective_basket", "basket"}:
+            rename_map[col] = "ElectiveBasket"
+        elif low in {"is_combined", "iscombined"}:
+            rename_map[col] = "Is_Combined"
+
+    if rename_map:
+        df = df.rename(columns=rename_map)
+
+    if "Semester_Half" not in df.columns:
+        df["Semester_Half"] = 0
+    if "Elective" not in df.columns:
+        df["Elective"] = 0
+    if "ElectiveBasket" not in df.columns:
+        df["ElectiveBasket"] = 0
+    if "Is_Combined" not in df.columns:
+        df["Is_Combined"] = 0
+
+    return df
+
+
+def _load_course_records(primary_name, *fallback_names):
+    """Load the first available CSV among candidates from the data directory."""
+    candidates = (primary_name,) + fallback_names
+    for name in candidates:
+        path = DATA_DIR / name
+        if path.exists():
+            df = pd.read_csv(path)
+            df = _normalize_course_dataframe(df)
+            return df.to_dict(orient="records"), path
+    raise FileNotFoundError(
+        f"None of the required data files were found: {', '.join(candidates)}"
+    )
+
+
+def _load_optional_course_records(*candidate_names):
+    """Load optional courses; returns empty list when no candidate file exists."""
+    for name in candidate_names:
+        path = DATA_DIR / name
+        if path.exists():
+            df = pd.read_csv(path)
+            df = _normalize_course_dataframe(df)
+            return df.to_dict(orient="records"), path
+    return [], None
+
+
+def _semester_suffix(path_obj, odd_suffix, even_suffix):
+    if path_obj is None:
+        return odd_suffix
+    return even_suffix if f"-{even_suffix}" in path_obj.name else odd_suffix
+
+
+with open(DATA_DIR / "time_slots.json", encoding="utf-8") as f:
     slots = json.load(f)["time_slots"]
 
 def t2m(t):
@@ -48,26 +122,43 @@ slots_norm.sort(key=lambda x: t2m(x["start"]))
 slot_keys = [s["key"] for s in slots_norm]
 slot_dur = {s["key"]: s["dur"] for s in slots_norm}
 
-coursesAI = pd.read_csv("data/coursesCSEA-I.csv").to_dict(orient="records")
-coursesBI = pd.read_csv("data/coursesCSEB-I.csv").to_dict(orient="records")
-coursesA  = pd.read_csv("data/coursesCSEA-III.csv").to_dict(orient="records")
-coursesB  = pd.read_csv("data/coursesCSEB-III.csv").to_dict(orient="records")
-coursesV  = pd.read_csv("data/coursesCSE-V.csv").to_dict(orient="records")
-coursesDSAI = pd.read_csv("data/coursesDSAI-III.csv").to_dict(orient="records")
-coursesECE  = pd.read_csv("data/coursesECE-III.csv").to_dict(orient="records")
-coursesVII  = pd.read_csv("data/courses7.csv").to_dict(orient="records")
-coursesDSAI_I = pd.read_csv("data/coursesDSAI-I.csv").to_dict(orient="records")
-coursesDSAI_V = pd.read_csv("data/coursesDSAI-V.csv").to_dict(orient="records")
-coursesECE_I  = pd.read_csv("data/coursesECE-I.csv").to_dict(orient="records")
-coursesECE_V  = pd.read_csv("data/coursesECE-V.csv").to_dict(orient="records")
+coursesAI, courses_ai_path = _load_course_records("coursesCSEA-I.csv", "coursesCSEA-II.csv")
+coursesBI, courses_bi_path = _load_course_records("coursesCSEB-I.csv", "coursesCSEB-II.csv")
+coursesA, courses_a_path = _load_course_records("coursesCSEA-III.csv", "coursesCSEA-IV.csv")
+coursesB, courses_b_path = _load_course_records("coursesCSEB-III.csv", "coursesCSEB-IV.csv")
 
-rooms = pd.read_csv("data/rooms.csv")
+courses_v_a_path = None
+courses_v_b_path = None
+if (DATA_DIR / "coursesCSE-V.csv").exists():
+    coursesV, courses_v_path = _load_course_records("coursesCSE-V.csv")
+else:
+    courses_v_a, courses_v_a_path = _load_course_records("coursesCSEA-VI.csv")
+    courses_v_b, courses_v_b_path = _load_course_records("coursesCSEB-VI.csv")
+    coursesV = courses_v_a + courses_v_b
+    courses_v_path = courses_v_a_path
+
+coursesDSAI, courses_dsai_path = _load_course_records("coursesDSAI-III.csv", "coursesDSAI-IV.csv")
+coursesECE, courses_ece_path = _load_course_records("coursesECE-III.csv", "coursesECE-IV.csv")
+coursesVII, courses_vii_path = _load_optional_course_records("courses7.csv")
+coursesDSAI_I, courses_dsai_i_path = _load_course_records("coursesDSAI-I.csv", "coursesDSAI-II.csv")
+coursesDSAI_V, courses_dsai_v_path = _load_course_records("coursesDSAI-V.csv", "coursesDSAI-VI.csv")
+coursesECE_I, courses_ece_i_path = _load_course_records("coursesECE-I.csv", "coursesECE-II.csv")
+coursesECE_V, courses_ece_v_path = _load_course_records("coursesECE-V.csv", "coursesECE-VI.csv")
+
+SEM1_SUFFIX = _semester_suffix(courses_ai_path, "I", "II")
+SEM3_SUFFIX = _semester_suffix(courses_a_path, "III", "IV")
+SEM5_SUFFIX = _semester_suffix(courses_dsai_v_path or courses_v_path, "V", "VI")
+YEAR1_TAG = 1 if SEM1_SUFFIX == "I" else 2
+YEAR3_TAG = 3 if SEM3_SUFFIX == "III" else 4
+YEAR5_TAG = 5 if SEM5_SUFFIX == "V" else 6
+
+rooms = pd.read_csv(DATA_DIR / "rooms.csv")
 rooms["Room_ID"] = rooms["Room_ID"].astype(str).str.strip()
 cls = rooms[rooms["Room_ID"].str.startswith('C')].copy()
 labs = rooms[rooms["Room_ID"].str.startswith('L')].copy()
 
 try:
-    reg = pd.read_csv("registrations.csv")
+    reg = pd.read_csv(BASE_DIR / "registrations.csv")
     reg.set_index("Course_Code", inplace=True)
 except Exception:
     reg = None
@@ -530,7 +621,6 @@ def assign_combined_precise_durations(
 ):
     ALLOWED_LECTURE_CHUNKS = [1.5, 1.0]
 
-    print("SYNC DICT ID:", id(combined_sync), "YEAR:", year_tag)
     if not combined_core:
         return []
 
@@ -814,7 +904,7 @@ def add_csv_legend_block(ws, csv_path, legend_title, room_prefix=None, elective_
     title_cell.font = Font(bold=True, size=13)
     title_cell.alignment = Alignment(horizontal="left", vertical="center")
 
-    df = pd.read_csv(csv_path)
+    df = _normalize_course_dataframe(pd.read_csv(csv_path))
     expect_cols = ["Course_Code", "Course_Title", "L-T-P-S-C", "Faculty", "Semester_Half", "Elective", "ElectiveBasket"]
     for ec in expect_cols:
         if ec not in df.columns:
@@ -1071,106 +1161,112 @@ if __name__ == "__main__":
     combined_sync_sem3 = {}
 
     ws1 = wb.active
-    ws1.title = "CSE-I Timetable"
+    ws1.title = f"CSE-{SEM1_SUFFIX} Timetable"
     cAf, cAs = split(coursesAI)
     cBf, cBs = split(coursesBI)
     
-    csea_block = generate(cAf, ws1, "CSEA I First Half", seed+0, sync_sem1, room_prefix='C1', elective_room_map=elective_room_map, room_busy_global=global_room_busy,hide_c004=True,year_tag=1,combined_sync=combined_sync_sem1,semester_half=1)
-    csea_block2 = generate(cAs, ws1, "CSEA I Second Half", seed+1, sync_sem1, room_prefix='C1', elective_room_map=elective_room_map, room_busy_global=global_room_busy,hide_c004=True,year_tag=1,combined_sync=combined_sync_sem1,semester_half=2)
-    add_csv_legend_block(ws1, "data/coursesCSEA-I.csv", "CSEA I", room_prefix="C1", elective_room_map=elective_room_map)
+    csea_block = generate(cAf, ws1, f"CSEA {SEM1_SUFFIX} First Half", seed+0, sync_sem1, room_prefix='C1', elective_room_map=elective_room_map, room_busy_global=global_room_busy,hide_c004=True,year_tag=YEAR1_TAG,combined_sync=combined_sync_sem1,semester_half=1)
+    csea_block2 = generate(cAs, ws1, f"CSEA {SEM1_SUFFIX} Second Half", seed+1, sync_sem1, room_prefix='C1', elective_room_map=elective_room_map, room_busy_global=global_room_busy,hide_c004=True,year_tag=YEAR1_TAG,combined_sync=combined_sync_sem1,semester_half=2)
+    add_csv_legend_block(ws1, str(courses_ai_path), f"CSEA {SEM1_SUFFIX}", room_prefix="C1", elective_room_map=elective_room_map)
     
-    cseb_block = generate(cBf, ws1, "CSEB I First Half", seed+2, sync_sem1, room_prefix='C1', elective_room_map=elective_room_map, room_busy_global=global_room_busy,hide_c004=True,year_tag=1,combined_sync=combined_sync_sem1,semester_half=1)
-    cseb_block2 = generate(cBs, ws1, "CSEB I Second Half", seed+3, sync_sem1, room_prefix='C1', elective_room_map=elective_room_map, room_busy_global=global_room_busy,hide_c004=True,year_tag=1,combined_sync=combined_sync_sem1,semester_half=2)
-    add_csv_legend_block(ws1, "data/coursesCSEB-I.csv", "CSEB I", room_prefix="C1", elective_room_map=elective_room_map)
+    cseb_block = generate(cBf, ws1, f"CSEB {SEM1_SUFFIX} First Half", seed+2, sync_sem1, room_prefix='C1', elective_room_map=elective_room_map, room_busy_global=global_room_busy,hide_c004=True,year_tag=YEAR1_TAG,combined_sync=combined_sync_sem1,semester_half=1)
+    cseb_block2 = generate(cBs, ws1, f"CSEB {SEM1_SUFFIX} Second Half", seed+3, sync_sem1, room_prefix='C1', elective_room_map=elective_room_map, room_busy_global=global_room_busy,hide_c004=True,year_tag=YEAR1_TAG,combined_sync=combined_sync_sem1,semester_half=2)
+    add_csv_legend_block(ws1, str(courses_bi_path), f"CSEB {SEM1_SUFFIX}", room_prefix="C1", elective_room_map=elective_room_map)
     
     combined_i_courses = (csea_block or []) + (csea_block2 or []) + (cseb_block or []) + (cseb_block2 or [])
     merge_and_color(ws1, combined_i_courses)
 
-    # --- DSAI-I ---
-    ws7 = wb.create_sheet("DSAI-I Timetable")
+    # --- DSAI (lower semester) ---
+    ws7 = wb.create_sheet(f"DSAI-{SEM1_SUFFIX} Timetable")
     d1f_i, d1s_i = split(coursesDSAI_I)
-    dsai1_block1 = generate(d1f_i, ws7, "DSAI-I First Half", seed+16, sync_sem1, room_prefix='C1', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=1,combined_sync=combined_sync_sem1,semester_half=1)
-    dsai1_block2 = generate(d1s_i, ws7, "DSAI-I Second Half", seed+17, sync_sem1, room_prefix='C1', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=1,combined_sync=combined_sync_sem1,semester_half=2)
-    add_csv_legend_block(ws7, "data/coursesDSAI-I.csv", "DSAI I", room_prefix="C1", elective_room_map=elective_room_map)
+    dsai1_block1 = generate(d1f_i, ws7, f"DSAI-{SEM1_SUFFIX} First Half", seed+16, sync_sem1, room_prefix='C1', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR1_TAG,combined_sync=combined_sync_sem1,semester_half=1)
+    dsai1_block2 = generate(d1s_i, ws7, f"DSAI-{SEM1_SUFFIX} Second Half", seed+17, sync_sem1, room_prefix='C1', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR1_TAG,combined_sync=combined_sync_sem1,semester_half=2)
+    add_csv_legend_block(ws7, str(courses_dsai_i_path), f"DSAI {SEM1_SUFFIX}", room_prefix="C1", elective_room_map=elective_room_map)
     combined_dsai1_courses = (dsai1_block1 or []) + (dsai1_block2 or [])
     merge_and_color(ws7, combined_dsai1_courses)
 
-    # --- ECE-I ---
-    ws9 = wb.create_sheet("ECE-I Timetable")
+    # --- ECE (lower semester) ---
+    ws9 = wb.create_sheet(f"ECE-{SEM1_SUFFIX} Timetable")
     e1f_i, e1s_i = split(coursesECE_I)
-    ece1_block1 = generate(e1f_i, ws9, "ECE-I First Half", seed+20, sync_sem1, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=1,combined_sync=combined_sync_sem1,semester_half=1)
-    ece1_block2 = generate(e1s_i, ws9, "ECE-I Second Half", seed+21, sync_sem1, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=1,combined_sync=combined_sync_sem1,semester_half=2)
-    add_csv_legend_block(ws9, "data/coursesECE-I.csv", "ECE I", room_prefix="C4", elective_room_map=elective_room_map)
+    ece1_block1 = generate(e1f_i, ws9, f"ECE-{SEM1_SUFFIX} First Half", seed+20, sync_sem1, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR1_TAG,combined_sync=combined_sync_sem1,semester_half=1)
+    ece1_block2 = generate(e1s_i, ws9, f"ECE-{SEM1_SUFFIX} Second Half", seed+21, sync_sem1, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR1_TAG,combined_sync=combined_sync_sem1,semester_half=2)
+    add_csv_legend_block(ws9, str(courses_ece_i_path), f"ECE {SEM1_SUFFIX}", room_prefix="C4", elective_room_map=elective_room_map)
     combined_ece1_courses = (ece1_block1 or []) + (ece1_block2 or [])
     merge_and_color(ws9, combined_ece1_courses)
-    # --- CSE-III (Sections A & B) ---
-    ws2 = wb.create_sheet("CSE-III Timetable")
+    # --- CSE mid semester (Sections A & B) ---
+    ws2 = wb.create_sheet(f"CSE-{SEM3_SUFFIX} Timetable")
     c1f, c1s = split(coursesA); c2f, c2s = split(coursesB)
     
-    csea3_block1 = generate(c1f, ws2, "CSEA III First Half", seed+4, sync_sem3, room_prefix='C2', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=3,combined_sync=combined_sync_sem3,semester_half=1)
-    csea3_block2 = generate(c1s, ws2, "CSEA III Second Half", seed+5, sync_sem3, room_prefix='C2', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=3,combined_sync=combined_sync_sem3,semester_half=2)
-    add_csv_legend_block(ws2, "data/coursesCSEA-III.csv", "CSEA III", room_prefix="C2", elective_room_map=elective_room_map)
+    csea3_block1 = generate(c1f, ws2, f"CSEA {SEM3_SUFFIX} First Half", seed+4, sync_sem3, room_prefix='C2', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR3_TAG,combined_sync=combined_sync_sem3,semester_half=1)
+    csea3_block2 = generate(c1s, ws2, f"CSEA {SEM3_SUFFIX} Second Half", seed+5, sync_sem3, room_prefix='C2', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR3_TAG,combined_sync=combined_sync_sem3,semester_half=2)
+    add_csv_legend_block(ws2, str(courses_a_path), f"CSEA {SEM3_SUFFIX}", room_prefix="C2", elective_room_map=elective_room_map)
     
-    cseb3_block1 = generate(c2f, ws2, "CSEB III First Half", seed+6, sync_sem3, room_prefix='C2', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=3,combined_sync=combined_sync_sem3,semester_half=1)
-    cseb3_block2 = generate(c2s, ws2, "CSEB III Second Half", seed+7, sync_sem3, room_prefix='C2', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=3,combined_sync=combined_sync_sem3,semester_half=2)
-    add_csv_legend_block(ws2, "data/coursesCSEB-III.csv", "CSEB III", room_prefix="C2", elective_room_map=elective_room_map)
+    cseb3_block1 = generate(c2f, ws2, f"CSEB {SEM3_SUFFIX} First Half", seed+6, sync_sem3, room_prefix='C2', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR3_TAG,combined_sync=combined_sync_sem3,semester_half=1)
+    cseb3_block2 = generate(c2s, ws2, f"CSEB {SEM3_SUFFIX} Second Half", seed+7, sync_sem3, room_prefix='C2', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR3_TAG,combined_sync=combined_sync_sem3,semester_half=2)
+    add_csv_legend_block(ws2, str(courses_b_path), f"CSEB {SEM3_SUFFIX}", room_prefix="C2", elective_room_map=elective_room_map)
     
     combined_iii_courses = (csea3_block1 or []) + (csea3_block2 or []) + (cseb3_block1 or []) + (cseb3_block2 or [])
     merge_and_color(ws2, combined_iii_courses)
 
-    # --- DSAI-III ---
-    ws4 = wb.create_sheet("DSAI-III Timetable")
+    # --- DSAI mid semester ---
+    ws4 = wb.create_sheet(f"DSAI-{SEM3_SUFFIX} Timetable")
     d1f, d1s = split(coursesDSAI)
-    dsa_block1 = generate(d1f, ws4, "DSAI-III First Half", seed+10, sync_sem3, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=3,combined_sync=combined_sync_sem3,semester_half=1)
-    dsa_block2 = generate(d1s, ws4, "DSAI-III Second Half", seed+11, sync_sem3, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=3,combined_sync=combined_sync_sem3,semester_half=2)
-    add_csv_legend_block(ws4, "data/coursesDSAI-III.csv", "DSAI", room_prefix="C4", elective_room_map=elective_room_map)
+    dsa_block1 = generate(d1f, ws4, f"DSAI-{SEM3_SUFFIX} First Half", seed+10, sync_sem3, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR3_TAG,combined_sync=combined_sync_sem3,semester_half=1)
+    dsa_block2 = generate(d1s, ws4, f"DSAI-{SEM3_SUFFIX} Second Half", seed+11, sync_sem3, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR3_TAG,combined_sync=combined_sync_sem3,semester_half=2)
+    add_csv_legend_block(ws4, str(courses_dsai_path), f"DSAI {SEM3_SUFFIX}", room_prefix="C4", elective_room_map=elective_room_map)
     combined_dsa_courses = (dsa_block1 or []) + (dsa_block2 or [])
     merge_and_color(ws4, combined_dsa_courses)
 
-    # --- ECE-III ---
-    ws5 = wb.create_sheet("ECE-III Timetable")
+    # --- ECE mid semester ---
+    ws5 = wb.create_sheet(f"ECE-{SEM3_SUFFIX} Timetable")
     e1f, e1s = split(coursesECE)
-    ece_block1 = generate(e1f, ws5, "ECE-III First Half", seed+12, sync_sem3, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=3,combined_sync=combined_sync_sem3,semester_half=1)
-    ece_block2 = generate(e1s, ws5, "ECE-III Second Half", seed+13, sync_sem3, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=3,combined_sync=combined_sync_sem3,semester_half=2)
-    add_csv_legend_block(ws5, "data/coursesECE-III.csv", "ECE", room_prefix="C4", elective_room_map=elective_room_map)
+    ece_block1 = generate(e1f, ws5, f"ECE-{SEM3_SUFFIX} First Half", seed+12, sync_sem3, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR3_TAG,combined_sync=combined_sync_sem3,semester_half=1)
+    ece_block2 = generate(e1s, ws5, f"ECE-{SEM3_SUFFIX} Second Half", seed+13, sync_sem3, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR3_TAG,combined_sync=combined_sync_sem3,semester_half=2)
+    add_csv_legend_block(ws5, str(courses_ece_path), f"ECE {SEM3_SUFFIX}", room_prefix="C4", elective_room_map=elective_room_map)
     combined_ece_courses = (ece_block1 or []) + (ece_block2 or [])
     merge_and_color(ws5, combined_ece_courses)
 
-    # --- CSE-V ---
-    ws3 = wb.create_sheet("CSE-V Timetable")
+    # --- CSE upper semester ---
+    ws3 = wb.create_sheet(f"CSE-{SEM5_SUFFIX} Timetable")
     c5f, c5s = split(coursesV)
-    c5_block1 = generate(c5f, ws3, "CSE-V First Half", seed+8, sync_sem5, room_prefix='C3', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=5,semester_half=1)
-    c5_block2 = generate(c5s, ws3, "CSE-V Second Half", seed+9, sync_sem5, room_prefix='C3', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=5,semester_half=2)
-    add_csv_legend_block(ws3, "data/coursesCSE-V.csv", "CSE V", room_prefix="C3", elective_room_map=elective_room_map)
+    c5_block1 = generate(c5f, ws3, f"CSE-{SEM5_SUFFIX} First Half", seed+8, sync_sem5, room_prefix='C3', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR5_TAG,semester_half=1)
+    c5_block2 = generate(c5s, ws3, f"CSE-{SEM5_SUFFIX} Second Half", seed+9, sync_sem5, room_prefix='C3', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR5_TAG,semester_half=2)
+    if courses_v_a_path is not None and courses_v_b_path is not None:
+        add_csv_legend_block(ws3, str(courses_v_a_path), f"CSEA {SEM5_SUFFIX}", room_prefix="C3", elective_room_map=elective_room_map)
+        add_csv_legend_block(ws3, str(courses_v_b_path), f"CSEB {SEM5_SUFFIX}", room_prefix="C3", elective_room_map=elective_room_map)
+    else:
+        add_csv_legend_block(ws3, str(courses_v_path), f"CSE {SEM5_SUFFIX}", room_prefix="C3", elective_room_map=elective_room_map)
     combined_v_courses = (c5_block1 or []) + (c5_block2 or [])
     merge_and_color(ws3, combined_v_courses)
 
-    # --- DSAI-V ---
-    ws8 = wb.create_sheet("DSAI-V Timetable")
+    # --- DSAI upper semester ---
+    ws8 = wb.create_sheet(f"DSAI-{SEM5_SUFFIX} Timetable")
     d5f_v, d5s_v = split(coursesDSAI_V)
-    dsai5_block1 = generate(d5f_v, ws8, "DSAI-V First Half", seed+18, sync_sem5, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=5,semester_half=1)
-    dsai5_block2 = generate(d5s_v, ws8, "DSAI-V Second Half", seed+19, sync_sem5, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=5,semester_half=2)
-    add_csv_legend_block(ws8, "data/coursesDSAI-V.csv", "DSAI V", room_prefix="C4", elective_room_map=elective_room_map)
+    dsai5_block1 = generate(d5f_v, ws8, f"DSAI-{SEM5_SUFFIX} First Half", seed+18, sync_sem5, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR5_TAG,semester_half=1)
+    dsai5_block2 = generate(d5s_v, ws8, f"DSAI-{SEM5_SUFFIX} Second Half", seed+19, sync_sem5, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR5_TAG,semester_half=2)
+    add_csv_legend_block(ws8, str(courses_dsai_v_path), f"DSAI {SEM5_SUFFIX}", room_prefix="C4", elective_room_map=elective_room_map)
     combined_dsai5_courses = (dsai5_block1 or []) + (dsai5_block2 or [])
     merge_and_color(ws8, combined_dsai5_courses)
 
-    # --- ECE-V ---
-    ws10 = wb.create_sheet("ECE-V Timetable")
+    # --- ECE upper semester ---
+    ws10 = wb.create_sheet(f"ECE-{SEM5_SUFFIX} Timetable")
     e5f_v, e5s_v = split(coursesECE_V)
-    ece5_block1 = generate(e5f_v, ws10, "ECE-V First Half", seed+22, sync_sem5, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=5,semester_half=1)
-    ece5_block2 = generate(e5s_v, ws10, "ECE-V Second Half", seed+23, sync_sem5, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=5,semester_half=2)
-    add_csv_legend_block(ws10, "data/coursesECE-V.csv", "ECE V", room_prefix="C4", elective_room_map=elective_room_map)
+    ece5_block1 = generate(e5f_v, ws10, f"ECE-{SEM5_SUFFIX} First Half", seed+22, sync_sem5, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR5_TAG,semester_half=1)
+    ece5_block2 = generate(e5s_v, ws10, f"ECE-{SEM5_SUFFIX} Second Half", seed+23, sync_sem5, room_prefix='C4', elective_room_map=elective_room_map, room_busy_global=global_room_busy,year_tag=YEAR5_TAG,semester_half=2)
+    add_csv_legend_block(ws10, str(courses_ece_v_path), f"ECE {SEM5_SUFFIX}", room_prefix="C4", elective_room_map=elective_room_map)
     combined_ece5_courses = (ece5_block1 or []) + (ece5_block2 or [])
     merge_and_color(ws10, combined_ece5_courses)
-    # --- Common 7th Sem ---
-    ws6 = wb.create_sheet("COMMON 7TH-SEM Timetable")
-    s7f, s7s = split(coursesVII)
-    s7_block1 = generate(s7f, ws6, "COMMON 7TH-SEM First Half", seed+14, sync_sem7, room_prefix='C3', elective_room_map=elective_room_map, room_busy_global=global_room_busy, year_tag=7, semester_half=1)
-    s7_block2 = generate(s7s, ws6, "COMMON 7TH-SEM Second Half", seed+15, sync_sem7, room_prefix='C3', elective_room_map=elective_room_map, room_busy_global=global_room_busy, year_tag=7, semester_half=2)
-    add_csv_legend_block(ws6, "data/courses7.csv", "7TH SEM", room_prefix="C3", elective_room_map=elective_room_map)
-    combined_7_courses = (s7_block1 or []) + (s7_block2 or [])
-    merge_and_color(ws6, combined_7_courses)
 
-    name = f"Balanced_Timetable_latest.xlsx"
-    wb.save(name)
-    print("✅ Evenly balanced timetable saved in", name)
+    # --- Common 7th Sem (optional) ---
+    if coursesVII and courses_vii_path is not None:
+        ws6 = wb.create_sheet("COMMON 7TH-SEM Timetable")
+        s7f, s7s = split(coursesVII)
+        s7_block1 = generate(s7f, ws6, "COMMON 7TH-SEM First Half", seed+14, sync_sem7, room_prefix='C3', elective_room_map=elective_room_map, room_busy_global=global_room_busy, year_tag=7, semester_half=1)
+        s7_block2 = generate(s7s, ws6, "COMMON 7TH-SEM Second Half", seed+15, sync_sem7, room_prefix='C3', elective_room_map=elective_room_map, room_busy_global=global_room_busy, year_tag=7, semester_half=2)
+        add_csv_legend_block(ws6, str(courses_vii_path), "7TH SEM", room_prefix="C3", elective_room_map=elective_room_map)
+        combined_7_courses = (s7_block1 or []) + (s7_block2 or [])
+        merge_and_color(ws6, combined_7_courses)
+
+    output_path = BASE_DIR / "Balanced_Timetable_latest.xlsx"
+    wb.save(output_path)
+    print("✅ Evenly balanced timetable saved in", output_path)

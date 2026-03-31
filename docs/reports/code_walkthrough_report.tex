@@ -1,0 +1,123 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\geometry{margin=1in}
+\onehalfspacing
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  urlcolor=blue
+}
+
+\title{Code Walkthrough Report\\\large Automated Timetable Generator}
+\author{Roll Number: 24bcs015}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Abstract}
+This report presents a formal code walkthrough of the Timetable Generator application used for institutional scheduling. The document explains architecture, data flow, conflict management, output generation, and quality assurance strategy. The walkthrough is written for both technical reviewers and project stakeholders, while preserving software engineering rigor.
+
+\section{System Context and Objectives}
+The Timetable Generator is a Python-based scheduling system that transforms course, room, and faculty datasets into department-wise and faculty-wise timetable workbooks. The core objective is to allocate sessions while minimizing constraint violations such as room overlap, invalid slot usage, and duplicated placements.
+
+Primary project goals are listed below:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Deterministic and repeatable schedule generation.
+  \item Support for mandatory courses, electives, and combined courses.
+  \item Explicit handling of room constraints and slot exclusions.
+  \item Exportable reports for academic operations (student and faculty views).
+\end{itemize}
+
+\section{High-Level Architecture}
+The implementation centers on \texttt{timetable\_automation/timetable.py}. The architecture is a pipeline with five major stages:
+\begin{enumerate}[leftmargin=1.2cm]
+  \item \textbf{Data ingestion}: Read slot, course, and room datasets.
+  \item \textbf{Schema normalization}: Normalize historical and current semester CSV formats into a common internal representation.
+  \item \textbf{Scheduling core}: Place sessions using conflict checks and allocation heuristics.
+  \item \textbf{Post-processing}: Merge contiguous cells, color coding, and legend generation.
+  \item \textbf{Output generation}: Persist \texttt{Balanced\_Timetable\_latest.xlsx} and downstream faculty timetable.
+\end{enumerate}
+
+\section{Input Layer and Format Adaptation}
+A key enhancement in the current iteration is dual-format data compatibility. The loader now auto-detects old and new naming conventions (for example I/III/V versus II/IV/VI semester files) and maps columns such as:
+\begin{itemize}[leftmargin=1.2cm]
+  \item \texttt{basket} $\rightarrow$ \texttt{ElectiveBasket}
+  \item \texttt{is\_combined} $\rightarrow$ \texttt{Is\_Combined}
+\end{itemize}
+
+This design reduces migration risk when semester datasets change and keeps scheduling logic independent from raw CSV naming variations.
+
+\section{Core Scheduling Logic Walkthrough}
+\subsection{Slot Model and Availability}
+The scheduler converts each slot into a normalized key \texttt{start-end} and computes duration in hours. Availability is tracked per day and per slot using in-memory tables.
+
+\subsection{Allocation Strategy}
+Session placement combines constraint checks with iterative search:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Validate slot validity and emptiness.
+  \item Enforce type-specific constraints (lecture/tutorial/lab behavior).
+  \item Resolve room candidates from room class (classroom vs lab).
+  \item Reject conflicts against room occupancy and faculty occupancy maps.
+  \item Commit successful allocations and update usage structures.
+\end{itemize}
+
+\subsection{Electives and Combined Courses}
+Electives are synchronized through basket-level logic so alternatives can be managed coherently. Combined courses are treated with shared occupancy semantics where applicable. This is essential to avoid accidental conflicts when cross-program offerings share constraints.
+
+\subsection{Report Formatting and Export}
+After scheduling, the workbook layer applies visual formatting, merged contiguous blocks, and legend sections for readability by non-technical administrative users.
+
+\section{Code Quality and Maintainability Notes}
+The implementation currently uses a monolithic script pattern. While operationally functional, maintainability improves if the code is split into focused modules:
+\begin{itemize}[leftmargin=1.2cm]
+  \item \texttt{data\_loader.py} for ingestion and normalization,
+  \item \texttt{allocator.py} for conflict-aware placement,
+  \item \texttt{exporter.py} for workbook formatting and output.
+\end{itemize}
+
+This decomposition would improve testability, reduce regression risk, and simplify peer code reviews.
+
+\section{Verification and Validation}
+Verification was conducted through \textbf{static testing} activities, primarily structured code reviews. During review, emphasis was placed on path handling, schema normalization behavior, and conflict-check consistency in allocation routines.
+
+Validation was conducted through \textbf{dynamic testing} by executing real scheduling runs and inspecting generated artifacts. The dynamic flow validated that the core scheduling logic correctly consumed Jan-Apr datasets and produced both balanced and faculty timetable outputs without runtime failures.
+
+\section{Black Box Testing}
+Black box validation focused on input-output behavior without internal code assumptions:
+\begin{itemize}[leftmargin=1.2cm]
+  \item \textbf{Boundary Value Analysis (BVA)} was used on time-slot boundaries, including earliest and latest slots of the day, to verify no off-by-one or spillover errors in placement.
+  \item \textbf{Equivalence Partitioning} was applied to scheduling inputs by grouping cases into valid (available room/slot combinations) and invalid (double-booked or unavailable combinations) partitions.
+\end{itemize}
+
+This ensured that the scheduler behaved predictably at operational extremes and under common conflict classes.
+
+\section{White Box Testing}
+White box testing targeted control-flow correctness of the scheduling engine:
+\begin{itemize}[leftmargin=1.2cm]
+  \item \textbf{Basis Path Testing} was used to analyze independent paths through session allocation and conflict-resolution routines.
+  \item Cyclomatic complexity was reviewed to identify high-risk branching regions and prioritize test depth.
+  \item Statement and branch coverage goals were enforced for the tested conflict-resolution paths through CI-executed automated tests.
+\end{itemize}
+
+\section{Integration \& Regression Testing}
+A \textbf{Top-down integration strategy} with \textbf{stubs} was followed for staged assembly of the pipeline. Higher-level orchestration was validated first, with subordinate components substituted where needed to isolate behavior.
+
+Regression testing was executed after introducing semester-format adaptation and lab-related scheduling behavior updates. The purpose was to ensure no instability in previously working flows while enabling Jan-Apr data support.
+
+\section{CI and Automation Summary}
+The continuous integration workflow installs dependencies and executes the test suite with \texttt{pytest}. CI was updated to run from a safe working directory to avoid Python module shadowing side effects and to keep results reproducible across local and hosted environments.
+
+\section*{Conclusion}
+The current implementation is production-usable for semester scheduling with improved data-format tolerance and automated verification in CI. The principal next step for software engineering maturity is modular refactoring and expanded coverage for conflict edge cases (capacity exhaustion, cross-branch shared-room rules, and unscheduled course reporting).
+
+\end{document}
