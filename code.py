@@ -14,7 +14,7 @@ def get_user_date(prompt):
         s = input(prompt + " (DD-MM-YYYY): ").strip()
         try:
             return dt.datetime.strptime(s, "%d-%m-%Y").date()
-        except Exception:
+        except ValueError:
             print("Invalid format. Use DD-MM-YYYY.")
 
 print("=== Exam Timetable Generator (final) ===")
@@ -40,7 +40,7 @@ def safe_int(x):
         if s in ("", "-", "NA", "N/A", "nan"):
             return None
         return int(float(s))
-    except:
+    except (TypeError, ValueError, OverflowError):
         return None
 
 def generate_weekdays(start, end):
@@ -354,12 +354,9 @@ for col_cells in ws.columns:
     max_len = 0
     col = col_cells[0].column_letter
     for cell in col_cells:
-        try:
-            v = str(cell.value or "")
-            if len(v) > max_len:
-                max_len = len(v)
-        except:
-            pass
+        v = "" if cell.value is None else str(cell.value)
+        if len(v) > max_len:
+            max_len = len(v)
     ws.column_dimensions[col].width = min(max(10, max_len + 2), 60)
 
 
