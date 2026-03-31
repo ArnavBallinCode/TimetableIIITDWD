@@ -14,7 +14,8 @@ def _load_scheduler_module():
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(module)
-    module.c004_occupancy = {d: {} for d in module.days}
+    module.shared_room_occupancy = {d: {} for d in module.days}
+    module.c004_occupancy = module.shared_room_occupancy
     return module
 
 
@@ -141,7 +142,7 @@ def test_equivalence_partition_valid_and_double_booked_room(tm):
 def test_equivalence_partition_invalid_c004_conflict(tm):
     slot, _ = _first_and_last_usable_slot(tm)
     day = tm.days[2]
-    tm.c004_occupancy[day][slot] = "OTHER101"
+    tm.shared_room_occupancy[day][slot] = "OTHER101"
 
     tt = _blank_timetable(tm)
     busy, room_busy, course_usage = _empty_state_maps(tm)

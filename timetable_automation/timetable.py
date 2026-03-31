@@ -41,7 +41,7 @@ def _load_room_rules(path):
         return defaults
     rules = defaults.copy()
     for key in defaults:
-        if key in loaded and loaded[key]:
+        if key in loaded and loaded[key] is not None:
             rules[key] = loaded[key]
     return rules
 
@@ -50,14 +50,25 @@ room_rules = _load_room_rules(DATA_DIR / "room_rules.json")
 excluded = list(room_rules["excluded_slots"])
 # never allow any placement in these slots (hard ban)
 ABSOLUTELY_FORBIDDEN_SLOTS = set(room_rules["absolutely_forbidden_slots"])
-SPECIAL_SHARED_ROOM = str(room_rules["shared_occupancy_room"]).strip()
-COMBINED_COURSE_ROOM = str(room_rules.get("combined_course_room", SPECIAL_SHARED_ROOM)).strip()
-if not COMBINED_COURSE_ROOM:
-    COMBINED_COURSE_ROOM = SPECIAL_SHARED_ROOM
-if not SPECIAL_SHARED_ROOM:
-    SPECIAL_SHARED_ROOM = COMBINED_COURSE_ROOM
+_DEFAULT_SHARED_ROOM = "C004"
+
+
+def _normalize_room_id(value, fallback):
+    if value is None:
+        return fallback
+    room = str(value).strip()
+    return room if room else fallback
+
+
+SPECIAL_SHARED_ROOM = _normalize_room_id(room_rules.get("shared_occupancy_room"), _DEFAULT_SHARED_ROOM)
+combined_room_rule = room_rules.get("combined_course_room")
+if combined_room_rule is None:
+    combined_room_rule = room_rules.get("shared_occupancy_room")
+COMBINED_COURSE_ROOM = _normalize_room_id(combined_room_rule, SPECIAL_SHARED_ROOM)
 # Tracks which course is using the shared room in each slot (across all years/branches)
-c004_occupancy = {d: {} for d in days}   # day -> {slot -> course_code}
+shared_room_occupancy = {d: {} for d in days}   # day -> {slot -> course_code}
+# Backward-compatible alias used by tests/helpers.
+c004_occupancy = shared_room_occupancy
 
 
 def _normalize_course_dataframe(df):
@@ -333,7 +344,7 @@ def alloc_specific(tt, busy, rm, room_busy, day, slots_to_use, f, code, typ, ele
     # Block shared room if occupied by a different course for any requested slot
     if r == SPECIAL_SHARED_ROOM:
         for s_ in slots_to_use:
-            occ = c004_occupancy.get(day, {}).get(s_)
+            occ = shared_room_occupancy.get(day, {}).get(s_)
             if occ and occ != code:
                 # slot in shared room already taken by a different course
                 return False
@@ -385,7 +396,7 @@ def alloc_specific(tt, busy, rm, room_busy, day, slots_to_use, f, code, typ, ele
     # mark shared room occupancy so other branches see it
     if r == SPECIAL_SHARED_ROOM:
         for s_ in slots_to_use:
-            c004_occupancy.setdefault(day, {})[s_] = code
+            shared_room_occupancy.setdefault(day, {})[s_] = code
 
     return True
 
@@ -453,7 +464,7 @@ def alloc(tt, busy, rm, room_busy, d, f, code, h, typ="L", elec=False, labsd=set
         if r == SPECIAL_SHARED_ROOM:
             conflict = False
             for s_ in use:
-                occ = c004_occupancy.get(d, {}).get(s_)
+                occ = shared_room_occupancy.get(d, {}).get(s_)
                 if occ and occ != code:
                     conflict = True; break
             if conflict:
@@ -506,7 +517,7 @@ def alloc(tt, busy, rm, room_busy, d, f, code, h, typ="L", elec=False, labsd=set
         # mark shared room occupancy
         if r == SPECIAL_SHARED_ROOM:
             for s_ in use:
-                c004_occupancy.setdefault(d, {})[s_] = code
+                shared_room_occupancy.setdefault(d, {})[s_] = code
 
         return True
 
