@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from openpyxl import Workbook
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -271,3 +272,39 @@ def test_alloc_specific_success_updates_state_maps(tm):
     assert slot in busy[day]["Prof Success"]
     assert slot in room_busy[day][assigned_room]
     assert course_usage[day]["CSWB3"]["L"] == 1
+
+
+@pytest.mark.whitebox
+def test_room_candidates_respect_required_capacity(tm):
+    candidates = tm.room_candidates(lab=False, prefix="C1", required_capacity=120)
+    assert "C101" not in candidates
+    assert candidates == []
+    all_candidates = tm.room_candidates(lab=False, prefix=None, required_capacity=120)
+    assert "C004" in all_candidates
+    assert "C002" in all_candidates
+
+
+@pytest.mark.regression
+def test_generate_reports_unscheduled_course_when_capacity_unavailable(tm):
+    tm.unscheduled_courses.clear()
+    wb = Workbook()
+    ws = wb.active
+
+    courses = [
+        {
+            "Course_Code": "CS999",
+            "Course_Title": "Too High Capacity",
+            "L-T-P-S-C": "1-0-0-0-0",
+            "Faculty": "Prof Capacity",
+            "Elective": "0",
+            "Is_Combined": "0",
+            "Students": 9999,
+        }
+    ]
+
+    tm.generate(courses, ws, "TEST LABEL", 1, {}, room_prefix="C1")
+
+    assert tm.unscheduled_courses, "Expected unscheduled course entry"
+    entry = tm.unscheduled_courses[0]
+    assert entry["course_code"] == "CS999"
+    assert any(p["reason"] == "no room with sufficient capacity" for p in entry["unscheduled_parts"])
