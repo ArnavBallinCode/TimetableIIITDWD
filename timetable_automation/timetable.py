@@ -2,6 +2,7 @@ import json
 import random
 import re
 import time
+import argparse
 from pathlib import Path
 
 import pandas as pd
@@ -9,6 +10,18 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
 
 random.seed(42)
+
+
+def _parse_args():
+    parser = argparse.ArgumentParser(description="Generate balanced timetable workbook.")
+    default_base = Path(__file__).resolve().parents[1]
+    parser.add_argument("--data-dir", default=str(default_base / "data"), help="Directory containing timetable input CSV/JSON files")
+    parser.add_argument("--output", default=str(default_base / "Balanced_Timetable_latest.xlsx"), help="Output workbook path")
+    args, _ = parser.parse_known_args()
+    return args
+
+
+ARGS = _parse_args()
 
 days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 excluded = ["07:30-09:00", "10:30-10:45", "13:15-14:00","17:30-18:30"]
@@ -29,7 +42,8 @@ thin = Border(left=Side(style='thin'), right=Side(style='thin'),
               top=Side(style='thin'), bottom=Side(style='thin'))
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-DATA_DIR = BASE_DIR / "data"
+DATA_DIR = Path(ARGS.data_dir)
+OUTPUT_PATH = Path(ARGS.output)
 
 
 def _normalize_course_dataframe(df):
@@ -78,8 +92,9 @@ def _load_course_records(primary_name, *fallback_names):
             df = pd.read_csv(path)
             df = _normalize_course_dataframe(df)
             return df.to_dict(orient="records"), path
+    checked_paths = [str((DATA_DIR / name).resolve()) for name in candidates]
     raise FileNotFoundError(
-        f"None of the required data files were found: {', '.join(candidates)}"
+        f"None of the required data files were found. Checked: {', '.join(checked_paths)}"
     )
 
 
@@ -100,7 +115,11 @@ def _semester_suffix(path_obj, odd_suffix, even_suffix):
     return even_suffix if f"-{even_suffix}" in path_obj.name else odd_suffix
 
 
-with open(DATA_DIR / "time_slots.json", encoding="utf-8") as f:
+time_slots_path = DATA_DIR / "time_slots.json"
+if not time_slots_path.exists():
+    raise FileNotFoundError(f"Missing required time slots file: {time_slots_path.resolve()}")
+
+with open(time_slots_path, encoding="utf-8") as f:
     slots = json.load(f)["time_slots"]
 
 def t2m(t):
@@ -152,7 +171,10 @@ YEAR1_TAG = 1 if SEM1_SUFFIX == "I" else 2
 YEAR3_TAG = 3 if SEM3_SUFFIX == "III" else 4
 YEAR5_TAG = 5 if SEM5_SUFFIX == "V" else 6
 
-rooms = pd.read_csv(DATA_DIR / "rooms.csv")
+rooms_path = DATA_DIR / "rooms.csv"
+if not rooms_path.exists():
+    raise FileNotFoundError(f"Missing required rooms file: {rooms_path.resolve()}")
+rooms = pd.read_csv(rooms_path)
 rooms["Room_ID"] = rooms["Room_ID"].astype(str).str.strip()
 cls = rooms[rooms["Room_ID"].str.startswith('C')].copy()
 labs = rooms[rooms["Room_ID"].str.startswith('L')].copy()
@@ -1267,6 +1289,6 @@ if __name__ == "__main__":
         combined_7_courses = (s7_block1 or []) + (s7_block2 or [])
         merge_and_color(ws6, combined_7_courses)
 
-    output_path = BASE_DIR / "Balanced_Timetable_latest.xlsx"
+    output_path = OUTPUT_PATH
     wb.save(output_path)
     print("✅ Evenly balanced timetable saved in", output_path)
