@@ -14,7 +14,7 @@ def _load_scheduler_module():
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(module)
-    module.c004_occupancy = {d: {} for d in module.days}
+    module.room_occupancy = {d: {} for d in module.days}
     return module
 
 
@@ -141,7 +141,7 @@ def test_equivalence_partition_valid_and_double_booked_room(tm):
 def test_equivalence_partition_invalid_c004_conflict(tm):
     slot, _ = _first_and_last_usable_slot(tm)
     day = tm.days[2]
-    tm.c004_occupancy[day][slot] = "OTHER101"
+    tm.room_occupancy[day] = {slot: {"C004": tm.canonical_course_id("OTHER101")}}
 
     tt = _blank_timetable(tm)
     busy, room_busy, course_usage = _empty_state_maps(tm)
@@ -165,6 +165,36 @@ def test_equivalence_partition_invalid_c004_conflict(tm):
     )
 
     assert not ok
+
+
+@pytest.mark.whitebox
+def test_alloc_specific_allows_canonical_same_course_in_shared_room(tm):
+    slot, _ = _first_and_last_usable_slot(tm)
+    day = tm.days[0]
+    tm.room_occupancy[day] = {slot: {"C004": tm.canonical_course_id("ec-161")}}
+
+    tt = _blank_timetable(tm)
+    busy, room_busy, course_usage = _empty_state_maps(tm)
+    rm = {("EC161", "L"): "C004"}
+
+    ok = tm.alloc_specific(
+        tt,
+        busy,
+        rm,
+        room_busy,
+        day,
+        [slot],
+        "Prof Same",
+        "EC 161",
+        "L",
+        False,
+        set(),
+        course_usage,
+        class_prefix="C1",
+        rr_state={},
+    )
+
+    assert ok
 
 
 @pytest.mark.whitebox
