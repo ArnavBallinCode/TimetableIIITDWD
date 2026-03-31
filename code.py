@@ -6,8 +6,38 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
 import sys
 import math
+import argparse
 from pathlib import Path
 from collections import OrderedDict
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Generate exam timetable workbook.")
+    parser.add_argument("--course-file", default="FINAL_EXCEL.csv", help="Path to course input CSV")
+    parser.add_argument("--room-file", default="rooms.csv", help="Path to room input CSV")
+    parser.add_argument("--output-file", default="Exam_Timetable_Final.xlsx", help="Path to output workbook")
+    parser.add_argument("--start-date", help="Exam start date in DD-MM-YYYY format")
+    parser.add_argument("--end-date", help="Exam end date in DD-MM-YYYY format")
+    args, _ = parser.parse_known_args()
+    return args
+
+
+def parse_date_or_exit(value, label):
+    try:
+        return dt.datetime.strptime(value, "%d-%m-%Y").date()
+    except Exception:
+        print(f"Invalid {label}: '{value}'. Expected format DD-MM-YYYY.")
+        sys.exit(1)
+
+
+def require_file(path_value, label, arg_name):
+    path_obj = Path(path_value)
+    if not path_obj.exists():
+        resolved = path_obj.resolve()
+        print(f"Missing required {label}: {resolved}")
+        print(f"Use {arg_name} to provide a valid file path.")
+        sys.exit(1)
+    return path_obj
+
 
 def get_user_date(prompt):
     while True:
@@ -17,9 +47,19 @@ def get_user_date(prompt):
         except Exception:
             print("Invalid format. Use DD-MM-YYYY.")
 
+ARGS = parse_args()
+
 print("=== Exam Timetable Generator (final) ===")
-START_DATE = get_user_date("Enter exam START date")
-END_DATE   = get_user_date("Enter exam END date")
+START_DATE = (
+    parse_date_or_exit(ARGS.start_date, "start date")
+    if ARGS.start_date
+    else get_user_date("Enter exam START date")
+)
+END_DATE = (
+    parse_date_or_exit(ARGS.end_date, "end date")
+    if ARGS.end_date
+    else get_user_date("Enter exam END date")
+)
 if END_DATE < START_DATE:
     print("End date is before start date. Exiting.")
     sys.exit(1)
@@ -27,9 +67,9 @@ if END_DATE < START_DATE:
 
 SLOTS = ["Morning (10:00 AM – 11:30 AM)", "Afternoon (02:00 PM – 03:30 PM)"]
 
-COURSE_FILE = "FINAL_EXCEL.csv"
-ROOM_FILE = "rooms.csv"
-OUTPUT_FILE = "Exam_Timetable_Final.xlsx"
+COURSE_FILE = ARGS.course_file
+ROOM_FILE = ARGS.room_file
+OUTPUT_FILE = ARGS.output_file
 
 
 def safe_int(x):
@@ -52,12 +92,8 @@ def generate_weekdays(start, end):
         d += dt.timedelta(days=1)
     return res
 
-if not Path(COURSE_FILE).exists():
-    print(f"Missing file: {COURSE_FILE}")
-    sys.exit(1)
-if not Path(ROOM_FILE).exists():
-    print(f"Missing file: {ROOM_FILE}")
-    sys.exit(1)
+require_file(COURSE_FILE, "course_file", "--course-file")
+require_file(ROOM_FILE, "room_file", "--room-file")
 
 df = pd.read_csv(COURSE_FILE)
 rooms_df = pd.read_csv(ROOM_FILE)

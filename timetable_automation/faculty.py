@@ -3,14 +3,44 @@ import openpyxl
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, Border, Side, PatternFill
 import json
-import glob
 import re
 import random
+import argparse
+import sys
+from pathlib import Path
 
 thin = Border(left=Side(style='thin'), right=Side(style='thin'),
               top=Side(style='thin'), bottom=Side(style='thin'))
 
-with open("data/time_slots.json") as f:
+BASE_DIR = Path(__file__).resolve().parents[1]
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Generate faculty timetable from balanced timetable.")
+    parser.add_argument("--data-dir", default=str(BASE_DIR / "data"), help="Directory containing CSV/JSON input data")
+    parser.add_argument("--balanced-input", default=str(BASE_DIR / "Balanced_Timetable_latest.xlsx"), help="Path to balanced timetable workbook")
+    parser.add_argument("--output", default=str(BASE_DIR / "Faculty_Timetable.xlsx"), help="Path to output workbook")
+    return parser.parse_args()
+
+
+def require_file(path_value, label):
+    path_obj = Path(path_value)
+    if not path_obj.exists():
+        print(f"Missing required {label}: {path_obj.resolve()}")
+        sys.exit(1)
+    return path_obj
+
+
+ARGS = parse_args()
+DATA_DIR = Path(ARGS.data_dir)
+BALANCED_INPUT = Path(ARGS.balanced_input)
+OUTPUT_FILE = Path(ARGS.output)
+TIME_SLOTS_FILE = DATA_DIR / "time_slots.json"
+
+require_file(TIME_SLOTS_FILE, "time slots file")
+require_file(BALANCED_INPUT, "balanced timetable workbook")
+
+with open(TIME_SLOTS_FILE, encoding="utf-8") as f:
     slots = json.load(f)["time_slots"]
 
 def t2m(x):
@@ -35,7 +65,7 @@ def split_faculty(fac):
     return parts
 
 def load_all_course_info():
-    files = glob.glob("data/*.csv")
+    files = list(DATA_DIR.glob("*.csv"))
     fac_map = {}
     p_map = {}
     elective_by_basket = {}
@@ -101,7 +131,7 @@ def get_fill(course_code):
         fill_map[col] = PatternFill(start_color=col, end_color=col, fill_type="solid")
     return fill_map[col]
 
-wb_in = openpyxl.load_workbook("Balanced_Timetable_latest.xlsx")
+wb_in = openpyxl.load_workbook(BALANCED_INPUT)
 faculty_slots = {}
 
 for sheet in wb_in.sheetnames:
@@ -266,5 +296,5 @@ for fac, table in faculty_slots.items():
                 pass
         ws.column_dimensions[col_letter].width = min(max_len + 2, 60)
 
-wb_out.save("Faculty_Timetable.xlsx")
-print("Faculty_Timetable.xlsx generated successfully.")
+wb_out.save(OUTPUT_FILE)
+print(f"{OUTPUT_FILE} generated successfully.")
