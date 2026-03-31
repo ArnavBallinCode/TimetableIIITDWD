@@ -6,6 +6,10 @@ This project is a updated copy of https://github.com/MayankBSahu/Automated-Timet
 This project automates the generation of clash-free timetables for IIIT Dharwad using institute data such as courses, batches, rooms, and student counts.  
 It reads structured input files (CSV/Excel), applies scheduling constraints, and produces a final timetable in Excel/CSV format that can be shared with faculty and students.
 
- 
+## Setup
 
+Install runtime dependencies:
 
+```bash
+pip install -r requirements.txt
+```
