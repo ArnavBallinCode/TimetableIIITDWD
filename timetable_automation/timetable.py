@@ -63,8 +63,21 @@ coursesECE_V  = pd.read_csv("data/coursesECE-V.csv").to_dict(orient="records")
 
 rooms = pd.read_csv("data/rooms.csv")
 rooms["Room_ID"] = rooms["Room_ID"].astype(str).str.strip()
+# Create room capacity lookup dictionary
+room_capacity = {}
+for _, row in rooms.iterrows():
+    room_id = str(row["Room_ID"]).strip()
+    try:
+        capacity = int(row["Capacity"])
+        room_capacity[room_id] = capacity
+    except (ValueError, KeyError):
+        room_capacity[room_id] = 0  # Default to 0 if capacity is missing or invalid
+
 cls = rooms[rooms["Room_ID"].str.startswith('C')].copy()
 labs = rooms[rooms["Room_ID"].str.startswith('L')].copy()
+
+# Track unscheduled courses with reasons
+unscheduled_courses = []
 
 try:
     reg = pd.read_csv("registrations.csv")
@@ -115,7 +128,19 @@ lab_prefix_for_class_prefix = {
     "C4": "L4",
 }
 
-def room_candidates(lab=False, prefix=None, lab_prefix=None):
+def room_candidates(lab=False, prefix=None, lab_prefix=None, min_capacity=0):
+    """
+    Get list of room candidates, optionally filtered by minimum capacity.
+
+    Args:
+        lab: If True, search lab rooms; otherwise search classrooms
+        prefix: Room prefix filter (e.g., 'C1', 'C2')
+        lab_prefix: Lab prefix filter (e.g., 'L1', 'L2')
+        min_capacity: Minimum room capacity required (0 = no filter)
+
+    Returns:
+        List of room IDs meeting the criteria, sorted by capacity (largest first)
+    """
     df = labs if lab else cls
     if df.empty:
         return []
@@ -130,6 +155,17 @@ def room_candidates(lab=False, prefix=None, lab_prefix=None):
         c = cand[cand['Room_ID'].str.upper().str.startswith(lab_prefix.upper())]
         if not c.empty:
             cand = c
+
+    # Filter by minimum capacity if specified
+    if min_capacity > 0:
+        eligible_rooms = []
+        for room_id in cand["Room_ID"].tolist():
+            if room_capacity.get(room_id, 0) >= min_capacity:
+                eligible_rooms.append(room_id)
+        # Sort by capacity (descending) to prefer larger rooms when capacity matters
+        eligible_rooms.sort(key=lambda r: room_capacity.get(r, 0), reverse=True)
+        return eligible_rooms
+
     return cand["Room_ID"].tolist()
 
 def pick_room_for_slots(candidates, day, slots_to_use, room_busy, rr_state_key=None, rr_state=None):
@@ -163,7 +199,13 @@ def free(tt, d, ex=False):
     return fb
 
 def alloc_specific(tt, busy, rm, room_busy, day, slots_to_use, f, code, typ, elec, labsd, course_usage,
-                   class_prefix=None, rr_state=None, hide_c004=False, skip_usage_check=False, ex=False, year_tag=None):
+                   class_prefix=None, rr_state=None, hide_c004=False, skip_usage_check=False, ex=False, year_tag=None, students=0):
+    """
+    Allocate a specific course to a room for given time slots.
+
+    Args:
+        students: Number of students enrolled in the course (for capacity checking)
+    """
     for s_ in slots_to_use:
         if s_ not in slot_keys or tt.at[day, s_] != "":
             return False
@@ -192,6 +234,11 @@ def alloc_specific(tt, busy, rm, room_busy, day, slots_to_use, f, code, typ, ele
         key = (code, typ)
         if key in rm:
             candidate = rm[key]
+            # Verify existing room has sufficient capacity
+            if students > 0 and candidate != "C004":
+                if room_capacity.get(candidate, 0) < students:
+                    # Room previously assigned doesn't have capacity - need to find a new one
+                    return False
             # if candidate is C004 we still need to check cross-branch occupancy below
             if candidate != "C004":
                 used = room_busy.get(day, {}).get(candidate, set())
@@ -203,9 +250,14 @@ def alloc_specific(tt, busy, rm, room_busy, day, slots_to_use, f, code, typ, ele
                 r = None
             elif typ == "P":
                 lab_pref = lab_prefix_for_class_prefix.get(class_prefix, None)
-                candidates = room_candidates(lab=True, prefix=None, lab_prefix=lab_pref)
+                candidates = room_candidates(lab=True, prefix=None, lab_prefix=lab_pref, min_capacity=students)
             else:
-                candidates = room_candidates(lab=False, prefix=class_prefix, lab_prefix=None)
+                candidates = room_candidates(lab=False, prefix=class_prefix, lab_prefix=None, min_capacity=students)
+
+            if not candidates:
+                # No room with sufficient capacity found
+                return False
+
             r = pick_room_for_slots(candidates, day, slots_to_use, room_busy, rr_state_key=class_prefix, rr_state=rr_state)
             if r is None:
                 return False
@@ -273,7 +325,13 @@ def alloc_specific(tt, busy, rm, room_busy, day, slots_to_use, f, code, typ, ele
 
 
 def alloc(tt, busy, rm, room_busy, d, f, code, h, typ="L", elec=False, labsd=set(), ex=False,
-          preferred_slots=None, course_usage=None, class_prefix=None, rr_state=None, hide_c004=False,year_tag=None):
+          preferred_slots=None, course_usage=None, class_prefix=None, rr_state=None, hide_c004=False,year_tag=None, students=0):
+    """
+    Allocate a course session to the timetable.
+
+    Args:
+        students: Number of students enrolled in the course (for capacity checking)
+    """
     if course_usage is None:
         course_usage = {dd:{} for dd in days}
     if code not in course_usage[d]:
@@ -293,7 +351,7 @@ def alloc(tt, busy, rm, room_busy, d, f, code, h, typ="L", elec=False, labsd=set
         if pref_day == d:
             total = sum(slot_dur[s] for s in pref_slots)
             if total + 1e-9 >= h:
-                if alloc_specific(tt, busy, rm, room_busy, pref_day, pref_slots, f, code, typ, elec, labsd, course_usage, class_prefix=class_prefix, rr_state=rr_state, hide_c004=hide_c004):
+                if alloc_specific(tt, busy, rm, room_busy, pref_day, pref_slots, f, code, typ, elec, labsd, course_usage, class_prefix=class_prefix, rr_state=rr_state, hide_c004=hide_c004, students=students):
                     return True
 
     for blk in free(tt, d, ex):
@@ -309,6 +367,11 @@ def alloc(tt, busy, rm, room_busy, d, f, code, h, typ="L", elec=False, labsd=set
             key = (code, typ)
             if key in rm:
                 r = rm[key]
+                # Verify existing room has sufficient capacity
+                if students > 0 and r != "C004":
+                    if room_capacity.get(r, 0) < students:
+                        # Room previously assigned doesn't have capacity
+                        continue
                 if r != "C004":
                     used = room_busy.get(d, {}).get(r, set())
                     if set(use) & used:
@@ -318,10 +381,10 @@ def alloc(tt, busy, rm, room_busy, d, f, code, h, typ="L", elec=False, labsd=set
                     r = None
                 elif typ == "P":
                     lab_pref = lab_prefix_for_class_prefix.get(class_prefix, None)
-                    candidates = room_candidates(lab=True, prefix=None, lab_prefix=lab_pref)
+                    candidates = room_candidates(lab=True, prefix=None, lab_prefix=lab_pref, min_capacity=students)
                     r = pick_room_for_slots(candidates, d, use, room_busy, rr_state_key=lab_pref, rr_state=rr_state)
                 else:
-                    candidates = room_candidates(lab=False, prefix=class_prefix, lab_prefix=None)
+                    candidates = room_candidates(lab=False, prefix=class_prefix, lab_prefix=None, min_capacity=students)
                     r = pick_room_for_slots(candidates, d, use, room_busy, rr_state_key=class_prefix, rr_state=rr_state)
 
                 if r is None:
@@ -427,8 +490,14 @@ def try_allocate_chunk_from_block(
     tt, busy, rm, room_busy, labsd, course_usage,
     code, faculty, typ, need, day, slots,
     class_prefix=None, rr_state=None, hide_c004=False,
-    allow_excluded=False
+    allow_excluded=False, students=0
 ):
+    """
+    Try to allocate a chunk of time from a block of slots.
+
+    Args:
+        students: Number of students enrolled in the course (for capacity checking)
+    """
     n = len(slots)
 
     best_sub = None
@@ -468,7 +537,8 @@ def try_allocate_chunk_from_block(
         False, labsd, course_usage,
         class_prefix=class_prefix,
         rr_state=rr_state,
-        hide_c004=hide_c004
+        hide_c004=hide_c004,
+        students=students
     )
 
     if not ok:
@@ -588,6 +658,12 @@ def assign_combined_precise_durations(
         faculty = s(c.get("Faculty", ""))
         chunks = chunks_map[code]
 
+        # Extract student count for capacity checking
+        try:
+            students = int(c.get("Students", 0))
+        except (ValueError, TypeError):
+            students = 0
+
         sync_key = None
         existing_sync = None
         if combined_sync is not None and year_tag is not None:
@@ -623,7 +699,8 @@ def assign_combined_precise_durations(
                                 code, faculty, "L", chunk, day, slots,
                                 class_prefix="C0",
                                 rr_state=rr_state,
-                                hide_c004=hide_c004
+                                hide_c004=hide_c004,
+                                students=students
                             )
 
                             if used_slots is not None:
@@ -653,7 +730,8 @@ def assign_combined_precise_durations(
                         code, typ, False, labsd, course_usage,
                         class_prefix="C0",
                         rr_state=rr_state,
-                        hide_c004=hide_c004
+                        hide_c004=hide_c004,
+                        students=students
                     )
                     if ok:
                         allocated = True
@@ -673,7 +751,8 @@ def assign_combined_precise_durations(
                         code, faculty, typ, need, day, slots,
                         class_prefix="C0",
                         rr_state=rr_state,
-                        hide_c004=hide_c004
+                        hide_c004=hide_c004,
+                        students=students
                     )
 
                     if used_slots is not None:
@@ -945,6 +1024,7 @@ def generate(courses, ws, label, seed, elective_sync,
             "L-T-P-S-C": chosen.get("L-T-P-S-C","0-0-0-0-0"),
             "Elective": "1",
             "ElectiveBasket": b,
+            "Students": chosen.get("Students", 0),  # Preserve student count
             "_sync_name": sync_identifier
         })
 
@@ -968,6 +1048,13 @@ def generate(courses, ws, label, seed, elective_sync,
             code = s(c.get("Course_Code","UNKNOWN"))
             is_elec_flag = (code.startswith("Elective") or s(c.get("Elective","")) == "1")
             L, T, P, S, Cc = ltp(c.get("L-T-P-S-C","0-0-0-0-0"))
+
+            # Extract student count for capacity checking
+            try:
+                students = int(c.get("Students", 0))
+            except (ValueError, TypeError):
+                students = 0
+
             for h, typ in [(L,"L"), (T,"T"), (P,"P")]:
                 attempts = 0
                 while h > 1e-9 and attempts < 400:
@@ -998,7 +1085,7 @@ def generate(courses, ws, label, seed, elective_sync,
 
                     if sync_name and sync_name in elective_sync:
                         pref = elective_sync[sync_name]
-                        if alloc(tt, busy, rm, room_busy, pref["day"], f, code, a, typ, is_elec_flag, labsd, False, preferred_slots=(pref["day"], pref["slots"]), course_usage=course_usage, class_prefix=room_prefix, rr_state=rr_state,hide_c004=hide_c004,year_tag=year_tag):
+                        if alloc(tt, busy, rm, room_busy, pref["day"], f, code, a, typ, is_elec_flag, labsd, False, preferred_slots=(pref["day"], pref["slots"]), course_usage=course_usage, class_prefix=room_prefix, rr_state=rr_state,hide_c004=hide_c004,year_tag=year_tag, students=students):
                             h -= a; placed = True
 
                     if not placed:
@@ -1010,14 +1097,25 @@ def generate(courses, ws, label, seed, elective_sync,
                                 d_order = days[start_idx:] + days[:start_idx]
                                 start_idx_ref[0] = (start_idx_ref[0] + 1) % len(days)
                             for d in d_order:
-                                if alloc(tt, busy, rm, room_busy, d, f, code, a, typ, is_elec_flag, labsd, False, course_usage=course_usage, class_prefix=room_prefix, rr_state=rr_state,hide_c004=hide_c004,year_tag=year_tag):
+                                if alloc(tt, busy, rm, room_busy, d, f, code, a, typ, is_elec_flag, labsd, False, course_usage=course_usage, class_prefix=room_prefix, rr_state=rr_state,hide_c004=hide_c004,year_tag=year_tag, students=students):
                                     h -= a; placed = True; break
                             if placed:
                                 break
                     if not placed:
                         for d in days:
-                            if alloc(tt, busy, rm, room_busy, d, f, code, a, typ, is_elec_flag, labsd, True, course_usage=course_usage, class_prefix=room_prefix, rr_state=rr_state,hide_c004=hide_c004,year_tag=year_tag):
+                            if alloc(tt, busy, rm, room_busy, d, f, code, a, typ, is_elec_flag, labsd, True, course_usage=course_usage, class_prefix=room_prefix, rr_state=rr_state,hide_c004=hide_c004,year_tag=year_tag, students=students):
                                 h -= a; placed = True; break
+
+                    if not placed:
+                        # Track unscheduled course with reason
+                        unscheduled_courses.append({
+                            "Course_Code": code,
+                            "Type": typ,
+                            "Hours_Remaining": h,
+                            "Students": students,
+                            "Reason": "no room with sufficient capacity" if students > 0 else "no available time slots"
+                        })
+                        print(f"⚠️  Could not schedule {code} ({typ}, {h} hrs, {students} students): {unscheduled_courses[-1]['Reason']}")
 
                     if placed and sync_name and sync_name not in elective_sync:
                         for dcheck in days:
