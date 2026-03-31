@@ -7,6 +7,10 @@ from pathlib import Path
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
+try:
+    from timetable_automation.validation import validate_slot_allocations
+except ModuleNotFoundError:
+    from validation import validate_slot_allocations
 
 random.seed(42)
 
@@ -14,6 +18,7 @@ days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 excluded = ["07:30-09:00", "10:30-10:45", "13:15-14:00","17:30-18:30"]
 # Tracks which course is using C004 in each slot (across all years/branches)
 c004_occupancy = {d: {} for d in days}   # day -> {slot -> course_code}
+allocation_events = []
 # never allow any placement in these slots (hard ban)
 ABSOLUTELY_FORBIDDEN_SLOTS = {"07:30-09:00"}
 
@@ -345,6 +350,16 @@ def alloc_specific(tt, busy, rm, room_busy, day, slots_to_use, f, code, typ, ele
                 else:
                     v = code
         tt.at[day, s_] = v
+        allocation_events.append(
+            {
+                "day": day,
+                "slot": s_,
+                "course": code,
+                "room": r,
+                "faculty": f,
+                "requires_room": not elec,
+            }
+        )
 
     if f:
         busy[day].setdefault(f, set()).update(slots_to_use)
@@ -466,6 +481,16 @@ def alloc(tt, busy, rm, room_busy, d, f, code, h, typ="L", elec=False, labsd=set
                     else:
                         v = code
             tt.at[d, s_] = v
+            allocation_events.append(
+                {
+                    "day": d,
+                    "slot": s_,
+                    "course": code,
+                    "room": r,
+                    "faculty": f,
+                    "requires_room": not elec,
+                }
+            )
 
         if f:
             busy[d].setdefault(f, set()).update(use)
@@ -1147,6 +1172,7 @@ def split(c):
     return f, s2
 
 if __name__ == "__main__":
+    allocation_events.clear()
     wb = Workbook()
     seed = random.randint(0, 999999)
 
@@ -1268,5 +1294,9 @@ if __name__ == "__main__":
         merge_and_color(ws6, combined_7_courses)
 
     output_path = BASE_DIR / "Balanced_Timetable_latest.xlsx"
+    try:
+        validate_slot_allocations(allocation_events, check_faculty_conflicts=False)
+    except ValueError as exc:
+        raise SystemExit(f"❌ {exc}")
     wb.save(output_path)
     print("✅ Evenly balanced timetable saved in", output_path)
