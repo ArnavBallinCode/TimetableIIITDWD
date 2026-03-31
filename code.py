@@ -29,12 +29,12 @@ def parse_date_or_exit(value, label):
         sys.exit(1)
 
 
-def require_file(path_value, label):
+def require_file(path_value, label, arg_name):
     path_obj = Path(path_value)
     if not path_obj.exists():
         resolved = path_obj.resolve()
         print(f"Missing required {label}: {resolved}")
-        print(f"Use --{label.replace('_', '-')} to provide a valid file path.")
+        print(f"Use {arg_name} to provide a valid file path.")
         sys.exit(1)
     return path_obj
 
@@ -50,8 +50,16 @@ def get_user_date(prompt):
 ARGS = parse_args()
 
 print("=== Exam Timetable Generator (final) ===")
-START_DATE = parse_date_or_exit(ARGS.start_date, "start date") if ARGS.start_date else get_user_date("Enter exam START date")
-END_DATE = parse_date_or_exit(ARGS.end_date, "end date") if ARGS.end_date else get_user_date("Enter exam END date")
+START_DATE = (
+    parse_date_or_exit(ARGS.start_date, "start date")
+    if ARGS.start_date
+    else get_user_date("Enter exam START date")
+)
+END_DATE = (
+    parse_date_or_exit(ARGS.end_date, "end date")
+    if ARGS.end_date
+    else get_user_date("Enter exam END date")
+)
 if END_DATE < START_DATE:
     print("End date is before start date. Exiting.")
     sys.exit(1)
@@ -84,8 +92,8 @@ def generate_weekdays(start, end):
         d += dt.timedelta(days=1)
     return res
 
-require_file(COURSE_FILE, "course_file")
-require_file(ROOM_FILE, "room_file")
+require_file(COURSE_FILE, "course_file", "--course-file")
+require_file(ROOM_FILE, "room_file", "--room-file")
 
 df = pd.read_csv(COURSE_FILE)
 rooms_df = pd.read_csv(ROOM_FILE)
