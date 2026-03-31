@@ -309,7 +309,7 @@ def test_generate_returns_only_courses_present_in_output(tm):
 
     original_alloc = tm.alloc
 
-    def fake_alloc(tt, busy, rm, room_busy, d, f, code, h, *args, **kwargs):
+    def mock_alloc_for_csok_only(tt, busy, rm, room_busy, d, f, code, h, *args, **kwargs):
         if code == "CSMIS":
             return False
         if code == "CSOK":
@@ -317,7 +317,7 @@ def test_generate_returns_only_courses_present_in_output(tm):
             return True
         return False
 
-    tm.alloc = fake_alloc
+    tm.alloc = mock_alloc_for_csok_only
     try:
         placed = tm.generate(courses, ws, "Test Label", 0, {})
     finally:
@@ -349,10 +349,10 @@ def test_generate_surfaces_missing_course_warning_when_nothing_is_placed(tm, cap
 
     original_alloc = tm.alloc
 
-    def always_fail_alloc(*args, **kwargs):
+    def mock_alloc_always_fails(*args, **kwargs):
         return False
 
-    tm.alloc = always_fail_alloc
+    tm.alloc = mock_alloc_always_fails
     try:
         placed = tm.generate(courses, ws, "Warning Label", 0, {})
     finally:

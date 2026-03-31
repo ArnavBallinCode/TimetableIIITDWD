@@ -686,6 +686,7 @@ def assign_combined_precise_durations(
             existing_sync = combined_sync.get(sync_key)
 
         new_sync_entries = []
+        course_scheduled = False
         days_used = set()
 
         for idx, (need, typ) in enumerate(chunks):
@@ -721,6 +722,7 @@ def assign_combined_precise_durations(
                                 new_sync_entries.append(("L", day, used_slots))
                                 days_used.add(day)
                                 remaining -= chunk
+                                course_scheduled = True
                                 placed = True
                                 break
 
@@ -749,6 +751,7 @@ def assign_combined_precise_durations(
                     if ok:
                         allocated = True
                         days_used.add(sync_day)
+                        course_scheduled = True
 
             # ===== NORMAL BLOCK SEARCH =====
             if not allocated:
@@ -771,6 +774,7 @@ def assign_combined_precise_durations(
                         new_sync_entries.append((typ, day, used_slots))
                         allocated = True
                         days_used.add(day)
+                        course_scheduled = True
                         break
 
             if not allocated:
@@ -779,12 +783,7 @@ def assign_combined_precise_durations(
         if sync_key and combined_sync is not None and existing_sync is None and new_sync_entries:
             combined_sync[sync_key] = new_sync_entries
 
-        placed_any = any(
-            s(tt.at[d, slot]).startswith(code)
-            for d in days
-            for slot in slot_keys
-        )
-        if placed_any:
+        if course_scheduled:
             placed_codes.append(code)
         elif unscheduled_reasons is not None:
             unscheduled_reasons[code] = "combined-course constraints prevented placement"
@@ -1025,16 +1024,6 @@ def generate(courses, ws, label, seed, elective_sync,
     rr_state = {}
     missing_reasons = {}
 
-    def has_course_in_output(code):
-        ccode = s(code)
-        if not ccode:
-            return False
-        return any(
-            s(tt.at[d, slot]).startswith(ccode)
-            for d in days
-            for slot in slot_keys
-        )
-
     elec = [x for x in courses if s(x.get("Elective","")) == "1"]
     combined_core = [x for x in courses if s(x.get("Elective","")) != "1" and s(x.get("Is_Combined","0")) == "1"]
     regular_core = [x for x in courses if s(x.get("Elective","")) != "1" and s(x.get("Is_Combined","0")) != "1"]
@@ -1076,6 +1065,7 @@ def generate(courses, ws, label, seed, elective_sync,
         for c in course_list:
             f = s(c.get("Faculty",""))
             code = s(c.get("Course_Code","UNKNOWN"))
+            course_scheduled = False
             is_elec_flag = (code.startswith("Elective") or s(c.get("Elective","")) == "1")
             L, T, P, S, Cc = ltp(c.get("L-T-P-S-C","0-0-0-0-0"))
             for h, typ in [(L,"L"), (T,"T"), (P,"P")]:
@@ -1109,7 +1099,7 @@ def generate(courses, ws, label, seed, elective_sync,
                     if sync_name and sync_name in elective_sync:
                         pref = elective_sync[sync_name]
                         if alloc(tt, busy, rm, room_busy, pref["day"], f, code, a, typ, is_elec_flag, labsd, False, preferred_slots=(pref["day"], pref["slots"]), course_usage=course_usage, class_prefix=room_prefix, rr_state=rr_state,hide_c004=hide_c004,year_tag=year_tag):
-                            h -= a; placed = True
+                            h -= a; placed = True; course_scheduled = True
 
                     if not placed:
                         for i in range(5):
@@ -1121,13 +1111,13 @@ def generate(courses, ws, label, seed, elective_sync,
                                 start_idx_ref[0] = (start_idx_ref[0] + 1) % len(days)
                             for d in d_order:
                                 if alloc(tt, busy, rm, room_busy, d, f, code, a, typ, is_elec_flag, labsd, False, course_usage=course_usage, class_prefix=room_prefix, rr_state=rr_state,hide_c004=hide_c004,year_tag=year_tag):
-                                    h -= a; placed = True; break
+                                    h -= a; placed = True; course_scheduled = True; break
                             if placed:
                                 break
                     if not placed:
                         for d in days:
                             if alloc(tt, busy, rm, room_busy, d, f, code, a, typ, is_elec_flag, labsd, True, course_usage=course_usage, class_prefix=room_prefix, rr_state=rr_state,hide_c004=hide_c004,year_tag=year_tag):
-                                h -= a; placed = True; break
+                                h -= a; placed = True; course_scheduled = True; break
 
                     if placed and sync_name and sync_name not in elective_sync:
                         for dcheck in days:
@@ -1142,7 +1132,7 @@ def generate(courses, ws, label, seed, elective_sync,
                                 if sync_name in elective_sync: break
 
                     attempts += 1
-            if has_course_in_output(code):
+            if course_scheduled:
                 placed_list.append(c)
             else:
                 missing_reasons[code] = "no feasible slot/room/faculty combination found"
@@ -1158,12 +1148,20 @@ def generate(courses, ws, label, seed, elective_sync,
         rr_state=rr_state, hide_c004=hide_c004,  combined_sync=combined_sync, year_tag=year_tag,semester_half=semester_half,
         unscheduled_reasons=missing_reasons
     )
-    combined_placed = [c for c in combined_core if s(c.get("Course_Code", "")) in set(combined_placed_codes)]
+    combined_placed_set = set(combined_placed_codes)
+    combined_placed = [c for c in combined_core if s(c.get("Course_Code", "")) in combined_placed_set]
     regular_placed = place_course_list(regular_core, start_idx_ref)
 
     ws.append(["Day"] + slot_keys)
     for d in days:
         ws.append([d] + [tt.at[d, s] for s in slot_keys])
+
+    placed_codes_in_output = set()
+    for d in days:
+        for slot in slot_keys:
+            cell_val = s(tt.at[d, slot])
+            if cell_val:
+                placed_codes_in_output.add(cell_val.split()[0].strip())
 
     missing_courses = []
     seen_codes = set()
@@ -1172,7 +1170,7 @@ def generate(courses, ws, label, seed, elective_sync,
         if not code or code in seen_codes:
             continue
         seen_codes.add(code)
-        if not has_course_in_output(code):
+        if code not in placed_codes_in_output:
             reason = missing_reasons.get(code, "no feasible slot/room/faculty combination found")
             missing_courses.append((code, reason))
 
