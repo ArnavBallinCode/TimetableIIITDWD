@@ -3,6 +3,7 @@ import datetime as dt
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, Border, Side
 from openpyxl.utils import get_column_letter
+from timetable_automation.core import generate_exam_dates, save_workbook_with_fallback
 
 # === CONFIGURATION ===
 FILE_PATH = "CourseCode&Name.csv"
@@ -49,16 +50,6 @@ if current_batch and current_courses:
     courses[current_batch] = current_courses
 
 print(f"✅ Parsed {len(courses)} batches successfully!")
-
-# === STEP 2: GENERATE EXAM DATES (Skipping Weekends) ===
-def generate_exam_dates(num_days, start_date):
-    dates = []
-    d = start_date
-    while len(dates) < num_days:
-        if d.weekday() < 5:  # Monday–Friday only
-            dates.append(d)
-        d += dt.timedelta(days=1)
-    return dates
 
 max_exams = max(len(c) for c in courses.values())
 dates = generate_exam_dates(max_exams + 5, START_DATE)  # extra dates for electives
@@ -179,5 +170,5 @@ for batch in df["Batch"].unique():
         ws.column_dimensions[get_column_letter(col[0].column)].width = max_len + 2
 
 # Save Excel
-wb.save(OUTPUT_FILE)
-print(f"🎯 Timetable created successfully → {OUTPUT_FILE}")
+saved_path = save_workbook_with_fallback(wb, OUTPUT_FILE)
+print(f"🎯 Timetable created successfully → {saved_path}")

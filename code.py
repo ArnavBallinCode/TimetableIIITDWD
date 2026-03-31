@@ -8,6 +8,11 @@ import sys
 import math
 from pathlib import Path
 from collections import OrderedDict
+from timetable_automation.core import (
+    generate_weekdays,
+    safe_int,
+    save_workbook_with_fallback,
+)
 
 def get_user_date(prompt):
     while True:
@@ -31,26 +36,6 @@ COURSE_FILE = "FINAL_EXCEL.csv"
 ROOM_FILE = "rooms.csv"
 OUTPUT_FILE = "Exam_Timetable_Final.xlsx"
 
-
-def safe_int(x):
-    try:
-        if pd.isna(x):
-            return None
-        s = str(x).replace(",", "").strip()
-        if s in ("", "-", "NA", "N/A", "nan"):
-            return None
-        return int(float(s))
-    except:
-        return None
-
-def generate_weekdays(start, end):
-    d = start
-    res = []
-    while d <= end:
-        if d.weekday() < 5:
-            res.append(d)
-        d += dt.timedelta(days=1)
-    return res
 
 if not Path(COURSE_FILE).exists():
     print(f"Missing file: {COURSE_FILE}")
@@ -358,22 +343,12 @@ for col_cells in ws.columns:
             v = str(cell.value or "")
             if len(v) > max_len:
                 max_len = len(v)
-        except:
+        except Exception:
             pass
     ws.column_dimensions[col].width = min(max(10, max_len + 2), 60)
 
 
-out_path = Path(OUTPUT_FILE)
-i = 1
-base = out_path.stem
-ext = out_path.suffix or ".xlsx"
-while True:
-    try:
-        wb.save(out_path)
-        break
-    except PermissionError:
-        out_path = Path(f"{base}_{i}{ext}")
-        i += 1
+out_path = save_workbook_with_fallback(wb, OUTPUT_FILE)
 print(f"\n🎯 Timetable generated → {out_path}")
 
 if warning_short_capacity:
