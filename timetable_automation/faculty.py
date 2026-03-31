@@ -6,6 +6,9 @@ import json
 import glob
 import re
 import random
+import logging
+
+logger = logging.getLogger(__name__)
 
 thin = Border(left=Side(style='thin'), right=Side(style='thin'),
               top=Side(style='thin'), bottom=Side(style='thin'))
@@ -42,7 +45,8 @@ def load_all_course_info():
     for f in files:
         try:
             df = pd.read_csv(f)
-        except:
+        except (UnicodeDecodeError, pd.errors.ParserError, OSError) as exc:
+            logger.error("Failed to read CSV file '%s': %s", f, exc)
             continue
         cols = {c.lower(): c for c in df.columns}
         code_col = cols.get("course_code") or cols.get("course code")
@@ -64,7 +68,8 @@ def load_all_course_info():
             try:
                 parts = [float(x) for x in re.split(r"[-:]", ltp) if x != ""]
                 P = parts[2] if len(parts) >= 3 else 0.0
-            except:
+            except (TypeError, ValueError) as exc:
+                logger.warning("Invalid L-T-P format '%s' for course '%s': %s", ltp, c_up, exc)
                 P = 0.0
             p_map[c_up] = P
             elect = str(r.get(elec_col, "")).strip() if elec_col else ""
@@ -262,7 +267,7 @@ for fac, table in faculty_slots.items():
         for cell in col:
             try:
                 max_len = max(max_len, len(str(cell.value)))
-            except:
+            except (TypeError, ValueError):
                 pass
         ws.column_dimensions[col_letter].width = min(max_len + 2, 60)
 
