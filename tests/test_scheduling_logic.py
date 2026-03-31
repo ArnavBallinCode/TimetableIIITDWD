@@ -145,7 +145,7 @@ def test_equivalence_partition_invalid_c004_conflict(tm):
 
     tt = _blank_timetable(tm)
     busy, room_busy, course_usage = _empty_state_maps(tm)
-    rm = {("CSC004", "L"): "C004"}
+    rm = {("CSC004", "L"): tm.SPECIAL_SHARED_ROOM}
 
     ok = tm.alloc_specific(
         tt,
@@ -165,6 +165,14 @@ def test_equivalence_partition_invalid_c004_conflict(tm):
     )
 
     assert not ok
+
+
+@pytest.mark.whitebox
+def test_room_rules_loaded_from_external_configuration(tm):
+    assert tm.SPECIAL_SHARED_ROOM == "C004"
+    assert tm.COMBINED_COURSE_ROOM == "C004"
+    assert "10:30-10:45" in tm.excluded
+    assert "07:30-09:00" in tm.ABSOLUTELY_FORBIDDEN_SLOTS
 
 
 @pytest.mark.whitebox
