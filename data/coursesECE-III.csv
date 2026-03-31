@@ -1,14 +1,14 @@
-Course_Code,Course_Title,L-T-P-S-C,Faculty,Is_Combined,Semester_Half,Elective,Students,ElectiveBasket
-MA261,Differential Equations,3-1-0-0-2,Dr. Anand Barangi,1,2,0,65,0
-MA262,Multivariate Calculus,3-1-0-0-2,Dr. Somen Bhattacharjee,1,1,0,65,0
-MA263,Random Process,3-1-0-0-2,Dr. Chinmayananda,0,1,0,65,0
-EC261,Signals & Systems,2-1-0-0-3,Dr. Somen Bhattacharjee,0,2,0,65,0
-EC262,Semiconductor Devices,3-0-2-0-2,Dr. Pankaj Kumar,0,1,0,65,0
-EC465,Analog Electronic Circuits,3-0-2-0-2,Dr. Rajesh Kumar,0,2,0,65,0
-CS307,Machine Learning,3-1-0-0-4,Dr. Deepak KT,0,2,0,65,0
-EC251,Electronics System Design-I,3-1-0-0-2,Dr. Pankaj Kumar,1,1,1,75,1
-EC252,Introduction of RFIC design,3-1-0-0-2,Dr. Rajesh Kumar,1,1,1,15,1
-EC253,Introduction to Embedded Signal Intelligence,3-1-0-0-2,Dr. Sibasankar Padhy,1,2,1,70,1
-EC254,Electronic Systems Engineering,3-1-0-0-2,Mr. Mallikarjun Kande,1,1,1,60,1
-CS152,Data Science with Python,3-1-0-0-2,Dr. Abdul Wahid,1,1,1,50,1
-CS251,2D Computer Graphics,3-1-0-0-2,Dr. Vivekraj V K,1,1,1,20,1
+Course_Code,Course_Title,L-T-P-S-C,Faculty,Semester_Half,Elective,Students,basket,is_combined
+EC264,Analog and Digital Communication,3-0-0-0-3,Dr. Somen Bhattacharjee,0,0,66,0,0
+EC265,Linear Integrated Circuits,1-0-2-0-2,Dr. Rajesh Kumar,1,0,65,0,0
+EC266,Control System,3-1-0-0-2,Dr. Pankaj Kumar,2,0,66,0,0
+EC267,Digital Signal Processing,3-1-0-0-2,Dr. Sibasankar Padhy,1,0,65,0,0
+EC268,Embedded System Design,3-0-2-0-3,Dr. Prakash Pawar,0,0,66,0,0
+EC301,Introduction to VLSI Design,3-1-0-0-4,Dr. Jagadish D N,0,0,67,0,0
+HS261,Ethics and Values / Environmental Studies,3-0-0-0-3,Dr. Aswath Babu H,0,0,66,0,0
+EC255,Embedded Intelligent Sensing Systems,2-0-2-4-2,Dr. Sibasankar Padhy,1,1,30,1,0
+NEW,Edge AI Systems Design,3-1-0-0-2,Dr. Deepak K T,1,1,20,1,0
+CS252,Digital Forensic,3-1-0-0-2,Dr. Abdul Wahid,2,1,13,2,0
+CS261,Operating System,3-1-0-0-2,Dr. Siddharth R,2,1,41,2,0
+EC257,Causal Inference,3-1-0-0-2,Dr. Chinmayananda A,2,1,37,2,0
+CS253,Time Series Forecasting and Applications,3-1-0-0-2,Dr. Nataraj,2,1,105,2,0
