@@ -617,7 +617,8 @@ def find_contiguous_slice(block_slots, need_hours):
 def assign_combined_precise_durations(
     tt, busy, rm, room_busy, labsd, course_usage, combined_core,
     rr_state=None, hide_c004=False,
-    combined_sync=None, year_tag=None, semester_half=None
+    combined_sync=None, year_tag=None, semester_half=None,
+    unscheduled_reasons=None
 ):
     ALLOWED_LECTURE_CHUNKS = [1.5, 1.0]
 
@@ -778,7 +779,15 @@ def assign_combined_precise_durations(
         if sync_key and combined_sync is not None and existing_sync is None and new_sync_entries:
             combined_sync[sync_key] = new_sync_entries
 
-        placed_codes.append(code)
+        placed_any = any(
+            s(tt.at[d, slot]).startswith(code)
+            for d in days
+            for slot in slot_keys
+        )
+        if placed_any:
+            placed_codes.append(code)
+        elif unscheduled_reasons is not None:
+            unscheduled_reasons[code] = "combined-course constraints prevented placement"
 
     return placed_codes
 
@@ -1014,6 +1023,17 @@ def generate(courses, ws, label, seed, elective_sync,
     labsd = set()
     course_usage = {d:{} for d in days}
     rr_state = {}
+    missing_reasons = {}
+
+    def has_course_in_output(code):
+        ccode = s(code)
+        if not ccode:
+            return False
+        return any(
+            s(tt.at[d, slot]).startswith(ccode)
+            for d in days
+            for slot in slot_keys
+        )
 
     elec = [x for x in courses if s(x.get("Elective","")) == "1"]
     combined_core = [x for x in courses if s(x.get("Elective","")) != "1" and s(x.get("Is_Combined","0")) == "1"]
@@ -1122,7 +1142,10 @@ def generate(courses, ws, label, seed, elective_sync,
                                 if sync_name in elective_sync: break
 
                     attempts += 1
-            placed_list.append(c)
+            if has_course_in_output(code):
+                placed_list.append(c)
+            else:
+                missing_reasons[code] = "no feasible slot/room/faculty combination found"
         return placed_list
 
     start_idx_ref = [seed % len(days)]
@@ -1130,17 +1153,39 @@ def generate(courses, ws, label, seed, elective_sync,
     
     priority_placed = place_course_list(elec_final, start_idx_ref)
 
-    combined_placed = assign_combined_precise_durations(
+    combined_placed_codes = assign_combined_precise_durations(
         tt, busy, rm, room_busy, labsd, course_usage, combined_core,
-        rr_state=rr_state, hide_c004=hide_c004,  combined_sync=combined_sync, year_tag=year_tag,semester_half=semester_half
+        rr_state=rr_state, hide_c004=hide_c004,  combined_sync=combined_sync, year_tag=year_tag,semester_half=semester_half,
+        unscheduled_reasons=missing_reasons
     )
+    combined_placed = [c for c in combined_core if s(c.get("Course_Code", "")) in set(combined_placed_codes)]
     regular_placed = place_course_list(regular_core, start_idx_ref)
 
     ws.append(["Day"] + slot_keys)
     for d in days:
         ws.append([d] + [tt.at[d, s] for s in slot_keys])
+
+    missing_courses = []
+    seen_codes = set()
+    for c in (elec_final + regular_core + combined_core):
+        code = s(c.get("Course_Code", ""))
+        if not code or code in seen_codes:
+            continue
+        seen_codes.add(code)
+        if not has_course_in_output(code):
+            reason = missing_reasons.get(code, "no feasible slot/room/faculty combination found")
+            missing_courses.append((code, reason))
+
+    if missing_courses:
+        ws.append(["WARNING: Courses missing from generated timetable output"])
+        for code, reason in missing_courses:
+            ws.append([f"{code}: {reason}"])
+        print(f"⚠ [{label}] {len(missing_courses)} course(s) missing from output:")
+        for code, reason in missing_courses:
+            print(f"   - {code}: {reason}")
+
     ws.append([""])
-    return (priority_placed + regular_placed + combined_core)
+    return (priority_placed + regular_placed + combined_placed)
 def split(c):
     f = [x for x in c if s(x.get("Semester_Half","")) in ["1","0"]]
     s2 = [x for x in c if s(x.get("Semester_Half","")) in ["2","0"]]
