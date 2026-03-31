@@ -1,1 +1,5 @@
 docs/.DS_Store
+__pycache__/
+*.py[cod]
+tests/__pycache__/
+timetable_automation/__pycache__/
