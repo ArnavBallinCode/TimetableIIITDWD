@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess
 import sys
+import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +32,8 @@ def _ensure_balanced_output():
     )
 
 
+@pytest.mark.integration
+@pytest.mark.regression
 def test_faculty_timetable_generation_smoke():
     _ensure_balanced_output()
     if FACULTY_OUTPUT.exists():

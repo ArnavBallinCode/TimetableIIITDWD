@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess
 import sys
+import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,7 @@ def _run(cmd, timeout=300):
     )
 
 
+@pytest.mark.integration
 def test_jan_apr_data_files_are_present():
     expected = {
         "coursesCSEA-II.csv",
@@ -42,6 +44,8 @@ def test_jan_apr_data_files_are_present():
     assert not missing, f"Missing required Jan-Apr data files: {missing}"
 
 
+@pytest.mark.integration
+@pytest.mark.regression
 def test_timetable_generation_smoke():
     if BALANCED_OUTPUT.exists():
         BALANCED_OUTPUT.unlink()
