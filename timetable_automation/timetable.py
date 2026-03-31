@@ -107,7 +107,19 @@ def valid(c):
     if dup: err += list(dup)
     return err
 def is_combined_course(code, rm):
-    return (code, "L") in rm and rm[(code, "L")] == "C004"
+    """
+    Treat a course as combined only when it is explicitly marked combined.
+    Fallback to legacy C004 lecture-room inference for backward compatibility.
+    """
+    if rm.get((code, "_COMBINED"), False):
+        return True
+    return (code, "L") in rm and rm[(code, "L")] == "C004" and rm.get((code, "_COMBINED")) is None
+
+def log_c004_rejection(day, slots_to_use, requested_code, occupying_code):
+    print(
+        f"[C004-REJECTED] day={day} slots={','.join(slots_to_use)} "
+        f"request={requested_code} occupied_by={occupying_code}"
+    )
 lab_prefix_for_class_prefix = {
     "C1": "L1",
     "C2": "L2",
@@ -217,6 +229,7 @@ def alloc_specific(tt, busy, rm, room_busy, day, slots_to_use, f, code, typ, ele
             occ = c004_occupancy.get(day, {}).get(s_)
             if occ and occ != code:
                 # slot in C004 already taken by a different course
+                log_c004_rejection(day, slots_to_use, code, occ)
                 return False
 
     # Commit the allocation to tt
@@ -333,11 +346,15 @@ def alloc(tt, busy, rm, room_busy, d, f, code, h, typ="L", elec=False, labsd=set
         # NEW: prevent C004 being used by a different course simultaneously
         if r == "C004":
             conflict = False
+            conflict_occ = None
             for s_ in use:
                 occ = c004_occupancy.get(d, {}).get(s_)
                 if occ and occ != code:
-                    conflict = True; break
+                    conflict = True
+                    conflict_occ = occ
+                    break
             if conflict:
+                log_c004_rejection(d, use, code, conflict_occ)
                 continue
 
         # commit allocation to cells
@@ -959,7 +976,7 @@ def generate(courses, ws, label, seed, elective_sync,
 
     for c in combined_core:
         code = s(c.get("Course_Code",""))
-        rm[(code,"L")] = "C004"; rm[(code,"T")] = "C004"; rm[(code,"P")] = "C004"
+        rm[(code,"L")] = "C004"; rm[(code,"T")] = "C004"; rm[(code,"P")] = "C004"; rm[(code,"_COMBINED")] = True
 
     def place_course_list(course_list, start_idx_ref):
         placed_list = []
