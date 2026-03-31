@@ -10,7 +10,7 @@ CODE_PATH = REPO_ROOT / "code.py"
 
 @pytest.fixture
 def code_module():
-    spec = importlib.util.spec_from_file_location("exam_code_under_test", CODE_PATH)
+    spec = importlib.util.spec_from_file_location("code_module_under_test", CODE_PATH)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(module)
