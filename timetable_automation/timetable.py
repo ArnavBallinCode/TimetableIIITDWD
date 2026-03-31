@@ -30,8 +30,10 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
 
 
-def canonical_course_id(code):
-    return re.sub(r"[^A-Z0-9]", "", s(code).upper())
+def canonical_course_id(course_code):
+    if course_code is None:
+        return ""
+    return re.sub(r"[^A-Z0-9]", "", str(course_code).strip().upper())
 
 
 def _load_room_rules():

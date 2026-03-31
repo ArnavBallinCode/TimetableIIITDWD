@@ -15,10 +15,10 @@ BASE_DIR = Path(__file__).resolve().parent
 ROOM_RULES_PATH = BASE_DIR / "data" / "room_rules.json"
 
 
-def canonical_course_id(code):
-    if not isinstance(code, str):
-        return None
-    return re.sub(r"[^A-Z0-9]", "", code.strip().upper())
+def canonical_course_id(course_code):
+    if course_code is None:
+        return ""
+    return re.sub(r"[^A-Z0-9]", "", str(course_code).strip().upper())
 
 
 def load_room_rules():
