@@ -8,6 +8,7 @@ import sys
 import math
 from pathlib import Path
 from collections import OrderedDict
+from timetable_automation.validation import validate_exam_output, validate_batch_slot_uniqueness
 
 def get_user_date(prompt):
     while True:
@@ -305,6 +306,13 @@ if out_df.empty:
     sys.exit(1)
 
 out_df = out_df.sort_values(by=["Batch", "Date", "Slot", "Course"]).reset_index(drop=True)
+
+try:
+    validate_exam_output(out_df, date_column="Date_str", slot_column="Slot", rooms_column="Rooms")
+    validate_batch_slot_uniqueness(out_df, batch_column="Batch", date_column="Date_str", slot_column="Slot")
+except ValueError as exc:
+    print(f"❌ {exc}")
+    sys.exit(1)
 
 wb = Workbook()
 ws = wb.active

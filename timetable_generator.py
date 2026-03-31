@@ -3,6 +3,7 @@ import datetime as dt
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, Border, Side
 from openpyxl.utils import get_column_letter
+from timetable_automation.validation import validate_exam_output, validate_batch_slot_uniqueness
 
 # === CONFIGURATION ===
 FILE_PATH = "CourseCode&Name.csv"
@@ -121,6 +122,13 @@ df = pd.DataFrame(records)
 df = df.sort_values(by=["Batch", "Date"]).reset_index(drop=True)
 df["Date"] = pd.to_datetime(df["Date"])
 df["Date_str"] = df["Date"].dt.strftime("%d-%b-%Y")
+
+try:
+    validate_exam_output(df, date_column="Date_str", slot_column="Shift", rooms_column="Rooms")
+    validate_batch_slot_uniqueness(df, batch_column="Batch", date_column="Date_str", slot_column="Shift")
+except ValueError as exc:
+    print(f"❌ {exc}")
+    raise SystemExit(1)
 
 # === STEP 5: CREATE EXCEL WORKBOOK ===
 wb = Workbook()
