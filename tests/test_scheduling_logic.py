@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from openpyxl import Workbook
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -32,6 +33,15 @@ def _empty_state_maps(tm):
     room_busy = {d: {} for d in tm.days}
     course_usage = {d: {} for d in tm.days}
     return busy, room_busy, course_usage
+
+
+def _collect_sheet_values(ws):
+    values = []
+    for row in ws.iter_rows(values_only=True):
+        for cell in row:
+            if cell is not None:
+                values.append(str(cell))
+    return values
 
 
 def _first_and_last_usable_slot(tm):
@@ -271,3 +281,86 @@ def test_alloc_specific_success_updates_state_maps(tm):
     assert slot in busy[day]["Prof Success"]
     assert slot in room_busy[day][assigned_room]
     assert course_usage[day]["CSWB3"]["L"] == 1
+
+
+@pytest.mark.regression
+def test_generate_returns_only_courses_present_in_output(tm):
+    wb = Workbook()
+    ws = wb.active
+
+    courses = [
+        {
+            "Course_Code": "CSOK",
+            "Course_Title": "Course OK",
+            "Faculty": "Prof A",
+            "L-T-P-S-C": "1-0-0-0-0",
+            "Elective": "0",
+            "Is_Combined": "0",
+        },
+        {
+            "Course_Code": "CSMIS",
+            "Course_Title": "Course Missing",
+            "Faculty": "Prof B",
+            "L-T-P-S-C": "1-0-0-0-0",
+            "Elective": "0",
+            "Is_Combined": "0",
+        },
+    ]
+
+    original_alloc = tm.alloc
+
+    def mock_alloc_for_csok_only(tt, busy, rm, room_busy, d, f, code, h, *args, **kwargs):
+        if code == "CSMIS":
+            return False
+        if code == "CSOK":
+            tt.at[d, tm.slot_keys[0]] = code
+            return True
+        return False
+
+    tm.alloc = mock_alloc_for_csok_only
+    try:
+        placed = tm.generate(courses, ws, "Test Label", 0, {})
+    finally:
+        tm.alloc = original_alloc
+
+    placed_codes = {c.get("Course_Code") for c in placed}
+    assert placed_codes == {"CSOK"}
+    all_values = _collect_sheet_values(ws)
+    assert any(v.startswith("CSOK") for v in all_values)
+    assert any("WARNING: Courses missing from generated timetable output" in v for v in all_values)
+    assert any("CSMIS" in v for v in all_values)
+
+
+@pytest.mark.regression
+def test_generate_surfaces_missing_course_warning_when_nothing_is_placed(tm, capsys):
+    wb = Workbook()
+    ws = wb.active
+
+    courses = [
+        {
+            "Course_Code": "CSONE",
+            "Course_Title": "Never Scheduled",
+            "Faculty": "Prof X",
+            "L-T-P-S-C": "1-0-0-0-0",
+            "Elective": "0",
+            "Is_Combined": "0",
+        }
+    ]
+
+    original_alloc = tm.alloc
+
+    def mock_alloc_always_fails(*args, **kwargs):
+        return False
+
+    tm.alloc = mock_alloc_always_fails
+    try:
+        placed = tm.generate(courses, ws, "Warning Label", 0, {})
+    finally:
+        tm.alloc = original_alloc
+
+    captured = capsys.readouterr()
+    assert placed == []
+    assert "⚠ [Warning Label]" in captured.out
+    sheet_values = _collect_sheet_values(ws)
+    assert any("WARNING: Courses missing from generated timetable output" in v for v in sheet_values)
+    assert any("CSONE" in v for v in sheet_values)
