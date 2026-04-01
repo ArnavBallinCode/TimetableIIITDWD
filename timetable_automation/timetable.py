@@ -11,12 +11,6 @@ from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
 random.seed(42)
 
 days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-excluded = ["07:30-09:00", "10:30-10:45", "13:15-14:00","17:30-18:30"]
-# Tracks which course is using C004 in each slot (across all years/branches)
-c004_occupancy = {d: {} for d in days}   # day -> {slot -> course_code}
-# never allow any placement in these slots (hard ban)
-ABSOLUTELY_FORBIDDEN_SLOTS = {"07:30-09:00"}
-
 
 colors = [
     "FFB3BA","BAE1FF","BAFFC9","FFFFBA","FFD8BA","E3BAFF","D0BAFF","FFCBA4",
@@ -30,6 +24,51 @@ thin = Border(left=Side(style='thin'), right=Side(style='thin'),
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
+
+
+def _load_room_rules(path):
+    defaults = {
+        "excluded_slots": ["07:30-09:00", "10:30-10:45", "13:15-14:00", "17:30-18:30"],
+        "absolutely_forbidden_slots": ["07:30-09:00"],
+        "shared_occupancy_room": "C004",
+        "combined_course_room": "C004",
+    }
+    if not path.exists():
+        return defaults
+    with open(path, encoding="utf-8") as f:
+        loaded = json.load(f)
+    if not isinstance(loaded, dict):
+        return defaults
+    rules = defaults.copy()
+    for key in defaults:
+        if key in loaded and loaded[key] is not None:
+            rules[key] = loaded[key]
+    return rules
+
+
+room_rules = _load_room_rules(DATA_DIR / "room_rules.json")
+excluded = list(room_rules["excluded_slots"])
+# never allow any placement in these slots (hard ban)
+ABSOLUTELY_FORBIDDEN_SLOTS = set(room_rules["absolutely_forbidden_slots"])
+_DEFAULT_SHARED_ROOM = "C004"
+
+
+def _normalize_room_id(value, fallback):
+    if value is None:
+        return fallback
+    room = str(value).strip()
+    return room if room else fallback
+
+
+SPECIAL_SHARED_ROOM = _normalize_room_id(room_rules.get("shared_occupancy_room"), _DEFAULT_SHARED_ROOM)
+combined_room_rule = room_rules.get("combined_course_room")
+if combined_room_rule is None:
+    combined_room_rule = room_rules.get("shared_occupancy_room")
+COMBINED_COURSE_ROOM = _normalize_room_id(combined_room_rule, SPECIAL_SHARED_ROOM)
+# Tracks which course is using the shared room in each slot (across all years/branches)
+shared_room_occupancy = {d: {} for d in days}   # day -> {slot -> course_code}
+# Backward-compatible alias used by tests/helpers.
+c004_occupancy = shared_room_occupancy
 
 
 def _normalize_course_dataframe(df):
@@ -198,7 +237,7 @@ def valid(c):
     if dup: err += list(dup)
     return err
 def is_combined_course(code, rm):
-    return (code, "L") in rm and rm[(code, "L")] == "C004"
+    return (code, "L") in rm and rm[(code, "L")] == COMBINED_COURSE_ROOM
 lab_prefix_for_class_prefix = {
     "C1": "L1",
     "C2": "L2",
@@ -283,8 +322,8 @@ def alloc_specific(tt, busy, rm, room_busy, day, slots_to_use, f, code, typ, ele
         key = (code, typ)
         if key in rm:
             candidate = rm[key]
-            # if candidate is C004 we still need to check cross-branch occupancy below
-            if candidate != "C004":
+            # if candidate is special shared room we still need to check cross-branch occupancy below
+            if candidate != SPECIAL_SHARED_ROOM:
                 used = room_busy.get(day, {}).get(candidate, set())
                 if set(slots_to_use) & used:
                     return False
@@ -302,12 +341,12 @@ def alloc_specific(tt, busy, rm, room_busy, day, slots_to_use, f, code, typ, ele
                 return False
             rm[key] = r
 
-    # NEW: Block C004 if occupied by a different course for any requested slot
-    if r == "C004":
+    # Block shared room if occupied by a different course for any requested slot
+    if r == SPECIAL_SHARED_ROOM:
         for s_ in slots_to_use:
-            occ = c004_occupancy.get(day, {}).get(s_)
+            occ = shared_room_occupancy.get(day, {}).get(s_)
             if occ and occ != code:
-                # slot in C004 already taken by a different course
+                # slot in shared room already taken by a different course
                 return False
 
     # Commit the allocation to tt
@@ -324,9 +363,9 @@ def alloc_specific(tt, busy, rm, room_busy, day, slots_to_use, f, code, typ, ele
                 if typ == "P":
                     v = f"{code} (Lab)"
                 elif typ == "T":
-                    v = f"{code}T (C004)"
+                    v = f"{code}T ({COMBINED_COURSE_ROOM})"
                 else:
-                    v = f"{code} (C004)"
+                    v = f"{code} ({COMBINED_COURSE_ROOM})"
         else:
             if r and not elec:
                 if elec and typ == "P":
@@ -354,10 +393,10 @@ def alloc_specific(tt, busy, rm, room_busy, day, slots_to_use, f, code, typ, ele
         labsd.add(day)
     course_usage[day][code][typ] += 1
 
-    # NEW: mark C004 occupancy so other branches see it
-    if r == "C004":
+    # mark shared room occupancy so other branches see it
+    if r == SPECIAL_SHARED_ROOM:
         for s_ in slots_to_use:
-            c004_occupancy.setdefault(day, {})[s_] = code
+            shared_room_occupancy.setdefault(day, {})[s_] = code
 
     return True
 
@@ -400,7 +439,7 @@ def alloc(tt, busy, rm, room_busy, d, f, code, h, typ="L", elec=False, labsd=set
             key = (code, typ)
             if key in rm:
                 r = rm[key]
-                if r != "C004":
+                if r != SPECIAL_SHARED_ROOM:
                     used = room_busy.get(d, {}).get(r, set())
                     if set(use) & used:
                         continue
@@ -421,11 +460,11 @@ def alloc(tt, busy, rm, room_busy, d, f, code, h, typ="L", elec=False, labsd=set
         else:
             r = None
 
-        # NEW: prevent C004 being used by a different course simultaneously
-        if r == "C004":
+        # prevent shared room being used by a different course simultaneously
+        if r == SPECIAL_SHARED_ROOM:
             conflict = False
             for s_ in use:
-                occ = c004_occupancy.get(d, {}).get(s_)
+                occ = shared_room_occupancy.get(d, {}).get(s_)
                 if occ and occ != code:
                     conflict = True; break
             if conflict:
@@ -445,9 +484,9 @@ def alloc(tt, busy, rm, room_busy, d, f, code, h, typ="L", elec=False, labsd=set
                     if typ == "P":
                         v = f"{code} (Lab)"
                     elif typ == "T":
-                        v = f"{code}T (C004)"
+                        v = f"{code}T ({COMBINED_COURSE_ROOM})"
                     else:
-                        v = f"{code} (C004)"
+                        v = f"{code} ({COMBINED_COURSE_ROOM})"
             else:
                 if r and not elec:
                     if elec and typ == "P":
@@ -475,10 +514,10 @@ def alloc(tt, busy, rm, room_busy, d, f, code, h, typ="L", elec=False, labsd=set
             labsd.add(d)
         course_usage[d][code][typ] += 1
 
-        # NEW: mark C004 occupancy
-        if r == "C004":
+        # mark shared room occupancy
+        if r == SPECIAL_SHARED_ROOM:
             for s_ in use:
-                c004_occupancy.setdefault(d, {})[s_] = code
+                shared_room_occupancy.setdefault(d, {})[s_] = code
 
         return True
 
@@ -633,9 +672,9 @@ def assign_combined_precise_durations(
         if not code:
             continue
 
-        rm[(code, "L")] = "C004"
-        rm[(code, "T")] = "C004"
-        rm[(code, "P")] = "C004"
+        rm[(code, "L")] = COMBINED_COURSE_ROOM
+        rm[(code, "T")] = COMBINED_COURSE_ROOM
+        rm[(code, "P")] = COMBINED_COURSE_ROOM
 
         L, T, P, _, _ = ltp(c.get("L-T-P-S-C", "0-0-0-0-0"))
 
@@ -1049,7 +1088,7 @@ def generate(courses, ws, label, seed, elective_sync,
 
     for c in combined_core:
         code = s(c.get("Course_Code",""))
-        rm[(code,"L")] = "C004"; rm[(code,"T")] = "C004"; rm[(code,"P")] = "C004"
+        rm[(code,"L")] = COMBINED_COURSE_ROOM; rm[(code,"T")] = COMBINED_COURSE_ROOM; rm[(code,"P")] = COMBINED_COURSE_ROOM
 
     def place_course_list(course_list, start_idx_ref):
         placed_list = []

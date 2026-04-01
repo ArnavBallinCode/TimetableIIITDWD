@@ -37,6 +37,7 @@ def test_jan_apr_data_files_are_present():
         "coursesECE-VI.csv",
         "Faculty.csv",
         "rooms.csv",
+        "room_rules.json",
         "time_slots.json",
     }
     available = {p.name for p in DATA_DIR.iterdir() if p.is_file()}

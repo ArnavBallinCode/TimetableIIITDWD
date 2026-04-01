@@ -1,0 +1,13 @@
+{
+  "excluded_slots": [
+    "07:30-09:00",
+    "10:30-10:45",
+    "13:15-14:00",
+    "17:30-18:30"
+  ],
+  "absolutely_forbidden_slots": [
+    "07:30-09:00"
+  ],
+  "shared_occupancy_room": "C004",
+  "combined_course_room": "C004"
+}
