@@ -9,7 +9,7 @@ on:
       - edited
 
 permissions:
-  contents: none
+  contents: read
   pull-requests: read
   issues: write
 
@@ -17,20 +17,23 @@ jobs:
   remind-pr-checklist:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
+
     steps:
       - name: Check screenshots and linked issues in PR
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const pr = context.payload.pull_request;
             const body = pr.body || '';
             const marker = '<!-- pr-quality-reminder -->';
             const legacyMarker = '<!-- screenshot-reminder -->';
 
-            let alreadyCommented = false;
+            let existingComment = null;
             const perPage = 50;
             let page = 1;
 
+            // 🔍 Find existing bot comment
             while (true) {
               const { data: comments } = await github.rest.issues.listComments({
                 owner: context.repo.owner,
@@ -40,42 +43,33 @@ jobs:
                 page,
               });
 
-              if (!comments || comments.length === 0) {
+              if (!comments || comments.length === 0) break;
+
+              const found = comments.find(
+                (comment) =>
+                  comment.user?.type === 'Bot' &&
+                  (comment.body?.includes(marker) || comment.body?.includes(legacyMarker))
+              );
+
+              if (found) {
+                existingComment = found;
                 break;
               }
 
-              if (
-                comments.some(
-                  (comment) =>
-                    comment.user?.type === 'Bot' &&
-                    (comment.body?.includes(marker) || comment.body?.includes(legacyMarker))
-                )
-              ) {
-                alreadyCommented = true;
-                break;
-              }
-
-              if (comments.length < perPage) {
-                break;
-              }
-
+              if (comments.length < perPage) break;
               page += 1;
             }
-            if (alreadyCommented) {
-              core.info('Reminder already posted on this PR.');
-              return;
-            }
 
+            // 🖼️ Screenshot detection
             const hasMarkdownImage = /!\[[^\]]*\]\([^)]+\)/i.test(body);
             const hasHtmlImage = /<img\s+[^>]*src=["'][^"']+["'][^>]*>/i.test(body);
             const hasImageUrl =
               /https?:\/\/[^\s)]+?\.(?:png|jpe?g|gif|webp|svg|mp4|mov)(?:[?#][^\s)]*)?/i.test(body);
 
             const hasScreenshotInBody =
-              hasMarkdownImage ||
-              hasHtmlImage ||
-              hasImageUrl;
+              hasMarkdownImage || hasHtmlImage || hasImageUrl;
 
+            // 📁 File diff analysis
             const files = await github.paginate(github.rest.pulls.listFiles, {
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -88,13 +82,16 @@ jobs:
               visualExtensions.some((ext) => file.filename.toLowerCase().endsWith(ext))
             );
 
+            // 🔗 Issue detection
             const issueReferencePattern =
               /(?:^|[\s(])(?:#\d+|[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+#\d+|https?:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/issues\/\d+)(?=$|[\s).,;:!?])/i;
+
             const hasIssueReferenceInBody = issueReferencePattern.test(body);
 
             let hasLinkedIssueInGitHub = false;
+
             try {
-              const linkedIssuesResult = await github.graphql(
+              const result = await github.graphql(
                 `query ($owner: String!, $repo: String!, $number: Int!) {
                   repository(owner: $owner, name: $repo) {
                     pullRequest(number: $number) {
@@ -112,43 +109,60 @@ jobs:
               );
 
               hasLinkedIssueInGitHub =
-                linkedIssuesResult.repository.pullRequest.closingIssuesReferences.totalCount > 0;
+                result.repository.pullRequest.closingIssuesReferences.totalCount > 0;
             } catch (error) {
-              core.warning(`Unable to query linked issues via GraphQL: ${error}`);
+              core.warning(`GraphQL check failed: ${error}`);
             }
 
-            const hasLinkedIssue = hasIssueReferenceInBody || hasLinkedIssueInGitHub;
+            const hasLinkedIssue =
+              hasIssueReferenceInBody || hasLinkedIssueInGitHub;
 
+            // ❌ Missing checks
             const missingItems = [];
+
             if (!(hasScreenshotInBody || hasVisualFileInDiff)) {
               missingItems.push(
-                'Please add at least one screenshot (or a short screen recording) to show your fix.'
+                'Add at least one screenshot or short screen recording demonstrating the change.'
               );
             }
+
             if (!hasLinkedIssue) {
               missingItems.push(
-                'Please link the related issue in the PR description (for example: Related to #123 or Closes #123).'
+                'Link the related issue (e.g., Closes #123 or Related to #123).'
               );
             }
 
             if (missingItems.length === 0) {
-              core.info('Screenshot and linked issue checks passed, no reminder needed.');
+              core.info('All PR quality checks passed.');
               return;
             }
 
-            const reminderMessage = [
+            // 💬 Comment body
+            const message = [
               marker,
-              'Thanks for opening this PR.',
+              '🚀 PR Quality Check',
               '',
-              'Could you please update this PR with the following?',
+              'To accelerate review, please address:',
               ...missingItems.map((item) => `- ${item}`),
               '',
-              'These details make review faster and clearer for maintainers.',
+              'These additions help maintainers review faster and more effectively.',
             ].join('\n');
 
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr.number,
-              body: reminderMessage,
-            });
+            // 🔁 Update or create comment
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: message,
+              });
+              core.info('Updated existing reminder comment.');
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: message,
+              });
+              core.info('Created new reminder comment.');
+            }
