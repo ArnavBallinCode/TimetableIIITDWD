@@ -1,0 +1,9 @@
+{
+  "shared_rooms": {
+    "C004": {
+      "allow_same_course_overlap": true,
+      "require_explicit_overlap_courses": true,
+      "allowed_combined_course_ids": []
+    }
+  }
+}

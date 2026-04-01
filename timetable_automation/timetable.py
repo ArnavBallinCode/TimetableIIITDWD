@@ -12,8 +12,6 @@ random.seed(42)
 
 days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 excluded = ["07:30-09:00", "10:30-10:45", "13:15-14:00","17:30-18:30"]
-# Tracks which course is using C004 in each slot (across all years/branches)
-c004_occupancy = {d: {} for d in days}   # day -> {slot -> course_code}
 # never allow any placement in these slots (hard ban)
 ABSOLUTELY_FORBIDDEN_SLOTS = {"07:30-09:00"}
 
@@ -30,6 +28,40 @@ thin = Border(left=Side(style='thin'), right=Side(style='thin'),
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
+
+
+def canonical_course_id(course_code):
+    if course_code is None:
+        return ""
+    return re.sub(r"[^A-Z0-9]", "", str(course_code).strip().upper())
+
+
+def _load_room_rules():
+    default = {
+        "shared_rooms": {
+            "C004": {
+                "allow_same_course_overlap": True,
+                "require_explicit_overlap_courses": True,
+                "allowed_combined_course_ids": []
+            }
+        }
+    }
+    path = DATA_DIR / "room_rules.json"
+    if not path.exists():
+        return default
+    try:
+        with open(path, encoding="utf-8") as f:
+            loaded = json.load(f)
+    except Exception:
+        return default
+    if not isinstance(loaded, dict):
+        return default
+    merged = dict(default)
+    merged.update(loaded)
+    shared = dict(default.get("shared_rooms", {}))
+    shared.update(loaded.get("shared_rooms", {}) if isinstance(loaded.get("shared_rooms", {}), dict) else {})
+    merged["shared_rooms"] = shared
+    return merged
 
 
 def _normalize_course_dataframe(df):
@@ -121,6 +153,9 @@ elective_slots_by_year = {}
 slots_norm.sort(key=lambda x: t2m(x["start"]))
 slot_keys = [s["key"] for s in slots_norm]
 slot_dur = {s["key"]: s["dur"] for s in slots_norm}
+room_rules = _load_room_rules()
+room_occupancy = {d: {} for d in days}  # day -> {slot -> {room_id -> canonical_course_id}}
+shared_room_conflict_flags = set()
 
 coursesAI, courses_ai_path = _load_course_records("coursesCSEA-I.csv", "coursesCSEA-II.csv")
 coursesBI, courses_bi_path = _load_course_records("coursesCSEB-I.csv", "coursesCSEB-II.csv")
@@ -197,6 +232,48 @@ def valid(c):
     dup = {x for x in codes if codes.count(x) > 1 and x not in {"NEW", "ELECTIVE"}}
     if dup: err += list(dup)
     return err
+
+
+def room_overlap_allowed(room_id, existing_code, incoming_code):
+    shared_rules = room_rules.get("shared_rooms", {})
+    rules = shared_rules.get(room_id)
+    if not rules:
+        return False
+    existing_norm = canonical_course_id(existing_code)
+    incoming_norm = canonical_course_id(incoming_code)
+    if not existing_norm or not incoming_norm:
+        return False
+    if existing_norm == incoming_norm and rules.get("allow_same_course_overlap", False):
+        return True
+    allowed = {
+        canonical_course_id(x)
+        for x in rules.get("allowed_combined_course_ids", [])
+        if canonical_course_id(x)
+    }
+    if rules.get("require_explicit_overlap_courses", False):
+        return existing_norm in allowed and incoming_norm in allowed
+    return False
+
+
+def has_shared_room_conflict(day, slots_to_use, room_id, incoming_code):
+    for s_ in slots_to_use:
+        occ = room_occupancy.get(day, {}).get(s_, {}).get(room_id)
+        if occ and not room_overlap_allowed(room_id, occ, incoming_code):
+            shared_room_conflict_flags.add(
+                (day, s_, room_id, occ, canonical_course_id(incoming_code))
+            )
+            return True
+    return False
+
+
+def mark_shared_room_occupancy(day, slots_to_use, room_id, code):
+    canonical = canonical_course_id(code)
+    for s_ in slots_to_use:
+        day_map = room_occupancy.setdefault(day, {}).setdefault(s_, {})
+        if room_id not in day_map:
+            day_map[room_id] = canonical
+
+
 def is_combined_course(code, rm):
     return (code, "L") in rm and rm[(code, "L")] == "C004"
 lab_prefix_for_class_prefix = {
@@ -302,13 +379,9 @@ def alloc_specific(tt, busy, rm, room_busy, day, slots_to_use, f, code, typ, ele
                 return False
             rm[key] = r
 
-    # NEW: Block C004 if occupied by a different course for any requested slot
-    if r == "C004":
-        for s_ in slots_to_use:
-            occ = c004_occupancy.get(day, {}).get(s_)
-            if occ and occ != code:
-                # slot in C004 already taken by a different course
-                return False
+    # shared-room occupancy checks (e.g., C004) with canonicalized course IDs
+    if r and has_shared_room_conflict(day, slots_to_use, r, code):
+        return False
 
     # Commit the allocation to tt
     for s_ in slots_to_use:
@@ -354,10 +427,8 @@ def alloc_specific(tt, busy, rm, room_busy, day, slots_to_use, f, code, typ, ele
         labsd.add(day)
     course_usage[day][code][typ] += 1
 
-    # NEW: mark C004 occupancy so other branches see it
-    if r == "C004":
-        for s_ in slots_to_use:
-            c004_occupancy.setdefault(day, {})[s_] = code
+    if r:
+        mark_shared_room_occupancy(day, slots_to_use, r, code)
 
     return True
 
@@ -421,15 +492,8 @@ def alloc(tt, busy, rm, room_busy, d, f, code, h, typ="L", elec=False, labsd=set
         else:
             r = None
 
-        # NEW: prevent C004 being used by a different course simultaneously
-        if r == "C004":
-            conflict = False
-            for s_ in use:
-                occ = c004_occupancy.get(d, {}).get(s_)
-                if occ and occ != code:
-                    conflict = True; break
-            if conflict:
-                continue
+        if r and has_shared_room_conflict(d, use, r, code):
+            continue
 
         # commit allocation to cells
         for s_ in use:
@@ -475,10 +539,8 @@ def alloc(tt, busy, rm, room_busy, d, f, code, h, typ="L", elec=False, labsd=set
             labsd.add(d)
         course_usage[d][code][typ] += 1
 
-        # NEW: mark C004 occupancy
-        if r == "C004":
-            for s_ in use:
-                c004_occupancy.setdefault(d, {})[s_] = code
+        if r:
+            mark_shared_room_occupancy(d, use, r, code)
 
         return True
 
@@ -1149,6 +1211,9 @@ def split(c):
 if __name__ == "__main__":
     wb = Workbook()
     seed = random.randint(0, 999999)
+    room_occupancy.clear()
+    room_occupancy.update({d: {} for d in days})
+    shared_room_conflict_flags.clear()
 
     elective_room_map = {}
     global_room_busy = {d: {} for d in days}
@@ -1270,3 +1335,9 @@ if __name__ == "__main__":
     output_path = BASE_DIR / "Balanced_Timetable_latest.xlsx"
     wb.save(output_path)
     print("✅ Evenly balanced timetable saved in", output_path)
+    if shared_room_conflict_flags:
+        print(f"[warn] Shared-room overlap attempts blocked: {len(shared_room_conflict_flags)}")
+        for day, slot, room_id, existing_code, incoming_code in sorted(shared_room_conflict_flags):
+            print(
+                f"[warn] {day} {slot} {room_id}: existing={existing_code} incoming={incoming_code}"
+            )
