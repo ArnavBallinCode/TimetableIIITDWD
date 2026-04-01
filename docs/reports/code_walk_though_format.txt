@@ -1,0 +1,139 @@
+
+
+Code Walkthrough
+Automated Timetable Scheduling System IIIT Dharwad — BumbleBee Team
+
+
+
+System Features, Working and Implementation
+1. System Overview
+
+BumbleBee is a Python-based timetable generator for IIIT Dharwad. Given CSV files describing courses, rooms, faculty, and time slots, it automatically produces weekly timetables for every department and semester, plus a combined faculty timetable — all exported as formatted Excel workbooks.
+The entire logic lives in a single file: timetable_automation/main.py. It is built around two classes — Course and Scheduler — and a small set of module-level helper functions. The entry point at the bottom of the file wires everything together.
+Key capabilities at a glance
+Multi-department scheduling (CSE, DSAI, ECE) in one run
+First-half and second-half semester splits per timetable
+Elective basket management with cross-branch synchronisation
+Combined courses shared across departments (e.g., DS308)
+Global room conflict prevention across all departments
+Faculty conflict detection within a single department
+Color-coded, merged-cell Excel output with a course legend
+Separate faculty timetable workbook
+Deterministic output via a configurable random seed
+2. Input Data Format
+
+The scheduler reads four types of CSV files. All paths are passed in at runtime; nothing is hard-coded except the room-naming convention (rooms starting with 'C' are classrooms, rooms starting with 'L' are labs).
+
+
+The L-T-P-S-C column encodes Lecture, Tutorial, Practical, Self-study, and Credit hours as five integers separated by hyphens (e.g., 3-1-2-0-4). The scheduler uses only L, T, and P to determine how many hours of each session type to place in the timetable.
+Semester_Half controls which Excel sheet a course lands on: '1' → First_Half only, '2' → Second_Half only, '0' → both halves. Elective and basket together identify elective groups; is_combined flags courses that must be taught to multiple departments simultaneously.
+3. The Course Class
+
+Course is a lightweight data container. Its __init__ method reads one CSV row and populates the attributes the scheduler needs. There is no business logic here — it is purely a structured representation of a single course.
+Important attributes
+code, title, faculty  —  identifiers used in display and conflict checks
+L, T, P  —  hours of lectures, tutorials, and practicals to schedule
+is_elective  —  True when Elective=1 or basket > 0
+basket  —  integer group ID; electives sharing the same basket are alternatives
+is_combined  —  True when the course is taught jointly across departments
+semester_half  —  '1', '2', or '0'; controls which timetable sheet the course appears on
+students  —  enrolled count; used for room-capacity checks on combined courses
+# Simplified view of Course.__init__ self.L, self.T, self.P, self.S, self.C = map(int, self.ltp.split('-')) self.is_elective = (elective_num > 0) or (self.basket > 0) self.is_combined = str(raw_combined).lower() in {'1','true','yes','y'}
+4. The Scheduler Class
+
+Scheduler is the core engine. One instance is created per department. All instances share a set of global dictionaries passed in by reference, which is how cross-department state (room usage, elective slot locks, combined-course templates) is coordinated.
+4.1  Initialisation
+The constructor loads all three CSV files, classifies rooms into classrooms vs. labs by their Room_ID prefix, and sets up the shared global state references. It also extracts the semester number from the department name (e.g., 'CSE-4-A' → semester_group = '4') and resolves which combined-course cluster the department belongs to.
+# Room classification by naming convention if room_id.upper().startswith('L'):  self.labs.append(room_id) elif room_id.upper().startswith('C'): self.classrooms.append(room_id)  # Special room policies self.compulsory_only_classrooms    = {'C002', 'C003'}  # core courses only self.non_compulsory_blocked_classrooms = {'C004'}      # combined courses only  # Excluded slots (breaks) self.excluded_slots = ['07:30-09:00', '13:15-14:00']
+Two room policies are enforced at initialisation time: C002 and C003 are reserved exclusively for compulsory (non-elective) courses, and C004 is reserved exclusively for combined courses. These rules are checked in _room_allowed_for_course before any room is assigned.
+4.2  Global Shared Dictionaries
+Because one Scheduler instance cannot see another's local state, all cross-department coordination happens through dictionaries that are created once in the main block and passed to every Scheduler constructor.
+
+5. Timetable Generation Pipeline
+
+The public entry point is run_all_outputs. It calls generate_timetable twice — once for First_Half courses and once for Second_Half courses — writes both sheets to an Excel file, then triggers formatting and faculty timetable generation.
+5.1  Course Scheduling Order (generate_timetable)
+Before any session is placed, courses are split into three groups and sorted. The order matters because earlier courses claim the best slots and rooms first.
+Phase 1 — Elective placeholders: one representative per basket is scheduled first to lock shared time slots across all branches of the same semester.
+Phase 2 — Combined non-electives: courses shared across departments (is_combined=1) are scheduled next, using C004 as the preferred room.
+Phase 3 — Regular non-electives: all remaining core courses fill the leftover slots.
+Within each phase, courses are sorted by (P, L+T+S) descending — practicals first, then heavier lecture loads. This greedy ordering ensures that the most constrained courses (labs, large combined lectures) get first pick of available slots.
+combined_non_electives.sort(key=lambda c: (c.P, c.L+c.T+c.S), reverse=True) regular_non_electives.sort(key=lambda c:  (c.P, c.L+c.T+c.S), reverse=True) all_courses = elective_placeholders + combined_non_electives + regular_non_electives
+5.2  Session Allocation (_allocate_session)
+_allocate_session is the lowest-level workhorse. It is called once per session chunk (up to 1.5 h for lectures, 1 h for tutorials, 2 h for practicals) and either places the session or returns None.
+It operates in two modes:
+Force mode — used for elective and combined courses that already have a template. The exact (day, slots) are provided; the function only checks for local conflicts before accepting them.
+Search mode — used for regular courses. It scans all free blocks on a given day using a sliding window, collects every candidate sub-block that meets the required duration, sorts them by 'waste' (excess duration), and picks the tightest fit that passes all constraints.
+Constraints checked before confirming a slot:
+Same-course-same-day guard: a course cannot appear twice on the same day in the same sheet (intended to spread sessions across the week).
+Lab-per-day limit: only one practical session is allowed per day.
+Faculty availability: the local lecturer_busy dictionary is checked for each candidate slot.
+Room availability: _pick_room_for_slots is called to find a free, correctly typed room.
+Elective slot blocking: slots already locked by a different semester group's elective are skipped (soft constraint, relaxed if no other option exists).
+# Same-course-same-day guard for entry in self.scheduled_entries:     if entry['day']==day and entry['code']==code and entry['sheet']==sheet_name:         return None  # Sliding-window candidate search for block in free_blocks:     for i in range(len(block)):         dur_accum = 0         for j in range(i, len(block)):             dur_accum += self.slot_durations[block[j]]             if dur_accum >= duration_hours:                 candidates.append({'slots': block[i:j+1], 'waste': dur_accum - duration_hours})                 break candidates.sort(key=lambda x: x['waste'])  # prefer tightest fit
+After a session is placed, the function writes the display text into the timetable DataFrame, appends an entry to scheduled_entries, marks the faculty as busy, updates global_room_usage, and inserts a BREAK marker in the immediately following slot.
+5.3  Retry Loop
+For each session type (L, T, P) the scheduler runs a while loop that keeps trying until remaining hours reach zero or MAX_ATTEMPTS (2000) is exhausted. On each attempt it shuffles the day list randomly (seeded for reproducibility) and calls _allocate_session for each day. If a session is placed, remaining is decremented and the loop continues for the next chunk. Courses that cannot be fully scheduled are recorded in unscheduled_courses and exported to a separate Excel file.
+attempts = 0 while remaining > 0 and attempts < self.MAX_ATTEMPTS:     attempts += 1     days_to_try = self.days.copy()     random.shuffle(days_to_try)     for day in days_to_try:         alloc_dur = min(1.5, remaining)  # max 1.5 h per lecture chunk         allocated_slots = self._allocate_session(..., alloc_dur, ...)         if allocated_slots:             remaining -= alloc_dur             break
+6. Elective Course Handling
+
+Electives are the most complex part of the system. Multiple courses can be offered as alternatives within the same 'basket'. Students pick one, so all options in a basket must share the same time slot — but each needs its own room.
+6.1  Representative Selection
+For each basket, _pick_elective_representative selects one course to act as the scheduling proxy. The choice is deterministic: courses are sorted alphabetically by code, and the first one is picked. The selection is stored in global_elective_representatives so that all branches of the same semester group schedule the same representative, ensuring consistent slot templates.
+6.2  Slot Template Sharing
+When the first branch schedules an elective basket, the chosen (day, slots) are stored in global_elective_slots under a key of (semester_group, sheet_name, basket_id, session_type). Every subsequent branch for the same semester group finds this template and uses force mode to place the elective in the identical slot — guaranteeing that all branches of the same semester have their elective at the same time.
+Simultaneously, those slots are registered in global_elective_slot_usage so that electives from other semester groups are steered away from them (soft constraint).
+6.3  Room Assignment (_compute_elective_room_assignments_legally)
+Room assignment for electives is intentionally deferred until after all sessions are placed. This function runs once per sheet and assigns a display room to every course in every basket. It tries to find one stable room that is free across all of the elective's scheduled slots. If no single room works, it falls back to per-slot assignment and formats the result as 'C101 (Mon,Wed)'.
+The function uses a local_room_usage tracker alongside global_elective_room_usage to prevent two electives in the same basket from being shown in the same room. The results are stored in elective_room_assignment and later written into the timetable legend.
+7. Combined Course Handling
+
+A combined course (is_combined=1) is taught to students from multiple departments at the same time in the same room. The system must therefore schedule it once and reuse that exact slot and room for every department that offers it.
+7.1  Cluster Resolution
+_resolve_combined_cluster maps each department to a cluster ID using a hardcoded grouping: CSE forms one cluster; DSAI and ECE form another. The cluster ID becomes part of the combined-course template key, so only departments in the same cluster share a combined-course schedule.
+7.2  Template Key and Slot Sharing
+The template key is a tuple of (semester_group, cluster_id, sheet_name, course_code, session_type). The first department to schedule a combined course stores its chosen (day, slots, room) in global_combined_slots under this key. Every subsequent department with the same key retrieves the template and uses force mode — placing the course in the identical slot and room.
+Combined courses prefer room C004, which is reserved exclusively for them. The _is_room_available function has special logic that allows multiple departments to share C004 for the same combined course without triggering a conflict.
+# Template key construction def _combined_template_key(self, code, session_type, sheet_name):     return (self.semester_group, self.combined_cluster_id,             sheet_name, code, session_type)  # Shared room logic — same combined_key means same course, no conflict owner = combined_room_usage.get(day,{}).get(slot,{}).get(room_id) if owner != combined_key:     return False  # different course in same room → conflict
+8. Room Allocation
+
+_pick_room_for_slots is called every time a non-elective session needs a room. It applies a priority chain until it finds a valid room or returns an empty string.
+1. Preferred room — if a specific room was requested (e.g., from a combined template), try it first.
+2. C004 — for combined courses, try the dedicated large room before anything else.
+3. Persistent mapping — if the course was already assigned a room earlier in the same run, reuse it for consistency.
+4. Shuffled pool — iterate through the appropriate pool (classrooms for L/T, labs for P) in random order and return the first room that passes all checks.
+A room passes all checks when:
+Its type matches the session type (lab for practicals, classroom otherwise).
+It is not restricted to a category the course does not belong to (C002/C003 for compulsory only, C004 for combined only).
+Its capacity is sufficient (only enforced for combined courses).
+It is not already occupied at the requested (day, slots) in global_room_usage.
+Sheet-scoped room usage
+global_room_usage is partitioned by sheet name. First_Half and Second_Half maintain independent occupancy maps, reflecting the fact that the two halves of the semester run at different times and do not conflict with each other.
+def _sheet_scoped_usage(self, usage_map, sheet_name):     if sheet_name in {'First_Half', 'Second_Half'}:         return usage_map.setdefault(sheet_name, {})     return usage_map
+9. Excel Output and Formatting
+
+9.1  Student Timetable (format_student_timetable_with_legend)
+After both sheets are written to the workbook, format_student_timetable_with_legend opens the file with openpyxl and applies visual formatting:
+Color coding — each unique course code is assigned a color from a 10-color palette. The same color is used consistently across both sheets.
+Cell merging — consecutive cells in the same row that contain the same value are merged into a single wide cell, visually representing a multi-slot session.
+BREAK styling — BREAK cells are filled with a light grey background.
+Course legend — appended below the timetable grid, listing every core course with its code, title, L-T-P-S-C, faculty, and color swatch.
+Elective legend — a second table below the core legend lists every elective option in each basket with its assigned room.
+Column widths — automatically adjusted to fit the longest cell value in each column.
+9.2  Faculty Timetable (_generate_faculty_workbook)
+A separate workbook is generated with one sheet per faculty member. Each sheet contains two stacked grids — First_Half and Second_Half — showing every session that faculty member teaches across all departments. Elective entries are expanded to show the actual course code and faculty for each option in the basket, not just the placeholder 'Elective_N' label.
+The faculty workbook is regenerated at the end of the main loop using a helper Scheduler instance that holds the combined scheduled_entries from all departments, ensuring the final file reflects the complete picture.
+10. Main Entry Point
+
+The if __name__ == '__main__' block at the bottom of main.py orchestrates the full run. It defines the departments dictionary (mapping department names to course CSV paths), creates all shared global dictionaries, then iterates over departments in order, creating one Scheduler per department and calling run_all_outputs.
+departments = {     'CSE-2-A': 'data/coursesCSEA-II.csv',     'CSE-2-B': 'data/coursesCSEB-II.csv',     ...  # all 12 departments }  global_room_usage          = {} global_elective_slots      = {} global_combined_slots      = {} # ... other shared dicts  for dept_name, course_file in departments.items():     scheduler = Scheduler(slots_file, course_file, rooms_file,                           global_room_usage, global_elective_slots, ...)     scheduler.run_all_outputs(dept_name_prefix=dept_name, ...)
+After all departments are processed, a final helper Scheduler instance is created with the merged scheduled_entries from every department. Its sole purpose is to call _generate_faculty_workbook with the complete cross-department data, producing the unified faculty_timetable.xlsx.
+Determinism and the Random Seed
+The global random seed (default 42, overridable via the SEED environment variable) is set once at module load time. Because the retry loop shuffles days randomly, different seeds produce different timetable layouts. The seed makes results reproducible for debugging and testing.
+RANDOM_SEED = int(os.environ.get('SEED', '42')) random.seed(RANDOM_SEED)  # Override at runtime: # $env:SEED='7' ; python -m timetable_automation.main
+11. End-to-End Data Flow
+
+The diagram below summarises how data moves through the system for a single department run.
+
+
+Note: Steps 3–9 repeat for every department in the departments dictionary. The global dictionaries carry state forward so each department benefits from the constraints already established by earlier ones.

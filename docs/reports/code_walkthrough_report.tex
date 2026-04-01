@@ -303,6 +303,53 @@ Pass: merge confidence increases, Fail: block and debug before merge
 }}
 \end{center}
 
+\section{Merged Bug Report and Issue Traceability}
+
+\subsection{Why this section is merged here}
+This section merges the separate bug report into the walkthrough so design, implementation, testing, and open-defect context are in one document. Each open issue is mapped to how it was discovered and which testing type applies.
+
+\subsection{Issue discovery map (after testing stage)}
+{\small
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.07\textwidth}>{\raggedright\arraybackslash}p{0.35\textwidth}>{\raggedright\arraybackslash}p{0.23\textwidth}>{\raggedright\arraybackslash}p{0.25\textwidth}}
+\toprule
+\textbf{ID} & \textbf{Issue} & \textbf{How it was found} & \textbf{Testing type} \\
+\midrule
+\endhead
+\texttt{\#25} & C004 special-casing hides cross-branch conflict risk & Branch-path inspection of C004 logic and conflict policy review & White-box basis path + Black-box equivalence partition \\
+\texttt{\#23} & Duplicate scheduling scripts; no single source of truth & Repository structure audit and duplicate logic review & Static verification (code review) \\
+\texttt{\#22} & C004 rule is heavily hardcoded and not configurable & Source scan of repeated C004 conditionals in scheduler & Static verification (maintainability review) \\
+\texttt{\#20} & No mandatory post-generation conflict validation gate & End-to-end run review showing generation without enforced validation stop & Integration testing gap analysis \\
+\texttt{\#19} & Hardcoded semester start date in generator path & Parameter audit of date setup in generator workflow & Static verification + Regression risk review \\
+\texttt{\#18} & Interactive input blocks automation and CI & Non-interactive execution behavior review for script entrypoint & Integration and CI readiness testing \\
+\texttt{\#17} & Broad exception handling hides runtime errors & Exception-path inspection during code quality review & White-box error-path analysis \\
+\texttt{\#16} & Hardcoded file paths reduce portability & Multi-environment execution audit and path-coupling review & Integration portability testing \\
+\texttt{\#15} & Dependency setup friction on fresh environments & Clean-environment install and dependency manifest check & Setup validation and CI dependency verification \\
+\texttt{\#14} & Test import structure and package init mismatch & Early pytest import failure analysis in test bootstrap phase & Dynamic validation (test harness startup) \\
+\texttt{\#8} & Performance and scalability risk under larger datasets & Complexity and runtime-growth risk assessment & Non-functional testing (performance profiling planned) \\
+\texttt{\#7} & C004 blocking may reject valid placements & Allocation-path reasoning for strict occupancy branch outcomes & White-box branch/path testing \\
+\texttt{\#6} & Capacity enforcement can misallocate or omit classes & Behavior review for room assignment under high load and constraints & Black-box boundary and equivalence testing \\
+\texttt{\#4} & Duplicate-scheduled class may disappear in output & Output reconciliation review for duplicate placement flows & Regression testing + output integrity checks \\
+\texttt{\#3} & Final output may be empty despite scheduling activity & End-to-end mismatch check between placement and exported workbook & Integration testing + regression validation \\
+\texttt{\#2} & Unscheduled classes can be omitted without warning & Failure-path review when room capacity/slots are exhausted & Black-box invalid-partition testing \\
+\bottomrule
+\end{longtable}
+}
+
+\subsection{Operational impact summary}
+\begin{itemize}[leftmargin=1.2cm]
+  \item \textbf{Critical reliability risks:} \texttt{\#20}, \texttt{\#6}, \texttt{\#3}, and \texttt{\#2} can directly produce publishable timetable errors.
+  \item \textbf{C004 concentration risk:} \texttt{\#25}, \texttt{\#22}, and \texttt{\#7} show that one room-specific rule path has disproportionate defect pressure.
+  \item \textbf{Engineering process risk:} \texttt{\#23}, \texttt{\#17}, \texttt{\#16}, \texttt{\#15}, and \texttt{\#14} reduce maintainability and confidence in change safety.
+\end{itemize}
+
+\subsection{How this maps to the CI test strategy}
+\begin{itemize}[leftmargin=1.2cm]
+  \item Black-box and white-box scheduler tests now run in CI every push and PR to catch core conflict and boundary logic regressions.
+  \item Integration and regression smoke tests run in CI to validate workbook generation pipeline continuity.
+  \item Static verification checks in CI provide a baseline gate before dynamic tests execute.
+\end{itemize}
+
 \section{Practical Risk Notes}
 \begin{itemize}[leftmargin=1.2cm]
   \item C004 has many special-path checks, so this area should remain under focused regression tests.
