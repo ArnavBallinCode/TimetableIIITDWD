@@ -1,0 +1,168 @@
+name: PR Quality Reminder
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+      - edited
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+jobs:
+  remind-pr-checklist:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check screenshots and linked issues in PR
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+            const marker = '<!-- pr-quality-reminder -->';
+            const legacyMarker = '<!-- screenshot-reminder -->';
+
+            let existingComment = null;
+            const perPage = 50;
+            let page = 1;
+
+            // 🔍 Find existing bot comment
+            while (true) {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                per_page: perPage,
+                page,
+              });
+
+              if (!comments || comments.length === 0) break;
+
+              const found = comments.find(
+                (comment) =>
+                  comment.user?.type === 'Bot' &&
+                  (comment.body?.includes(marker) || comment.body?.includes(legacyMarker))
+              );
+
+              if (found) {
+                existingComment = found;
+                break;
+              }
+
+              if (comments.length < perPage) break;
+              page += 1;
+            }
+
+            // 🖼️ Screenshot detection
+            const hasMarkdownImage = /!\[[^\]]*\]\([^)]+\)/i.test(body);
+            const hasHtmlImage = /<img\s+[^>]*src=["'][^"']+["'][^>]*>/i.test(body);
+            const hasImageUrl =
+              /https?:\/\/[^\s)]+?\.(?:png|jpe?g|gif|webp|svg|mp4|mov)(?:[?#][^\s)]*)?/i.test(body);
+
+            const hasScreenshotInBody =
+              hasMarkdownImage || hasHtmlImage || hasImageUrl;
+
+            // 📁 File diff analysis
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            const visualExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.mp4', '.mov'];
+            const hasVisualFileInDiff = files.some((file) =>
+              visualExtensions.some((ext) => file.filename.toLowerCase().endsWith(ext))
+            );
+
+            // 🔗 Issue detection
+            const issueReferencePattern =
+              /(?:^|[\s(])(?:#\d+|[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+#\d+|https?:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/issues\/\d+)(?=$|[\s).,;:!?])/i;
+
+            const hasIssueReferenceInBody = issueReferencePattern.test(body);
+
+            let hasLinkedIssueInGitHub = false;
+
+            try {
+              const result = await github.graphql(
+                `query ($owner: String!, $repo: String!, $number: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    pullRequest(number: $number) {
+                      closingIssuesReferences(first: 1) {
+                        totalCount
+                      }
+                    }
+                  }
+                }`,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  number: pr.number,
+                }
+              );
+
+              hasLinkedIssueInGitHub =
+                result.repository.pullRequest.closingIssuesReferences.totalCount > 0;
+            } catch (error) {
+              core.warning(`GraphQL check failed: ${error}`);
+            }
+
+            const hasLinkedIssue =
+              hasIssueReferenceInBody || hasLinkedIssueInGitHub;
+
+            // ❌ Missing checks
+            const missingItems = [];
+
+            if (!(hasScreenshotInBody || hasVisualFileInDiff)) {
+              missingItems.push(
+                'Add at least one screenshot or short screen recording demonstrating the change.'
+              );
+            }
+
+            if (!hasLinkedIssue) {
+              missingItems.push(
+                'Link the related issue (e.g., Closes #123 or Related to #123).'
+              );
+            }
+
+            if (missingItems.length === 0) {
+              core.info('All PR quality checks passed.');
+              return;
+            }
+
+            // 💬 Comment body
+            const message = [
+              marker,
+              '🚀 PR Quality Check',
+              '',
+              'To accelerate review, please address:',
+              ...missingItems.map((item) => `- ${item}`),
+              '',
+              'These additions help maintainers review faster and more effectively.',
+            ].join('\n');
+
+            // 🔁 Update or create comment
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: message,
+              });
+              core.info('Updated existing reminder comment.');
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: message,
+              });
+              core.info('Created new reminder comment.');
+            }
